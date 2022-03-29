@@ -32,7 +32,7 @@ def plot_joint(x,y,s=0,x_label='',y_label='', robust=False,xlim=None,ylim=None,r
             y_med = np.nanmedian(y[y>y.min()])
             valid_ind = ((x<(x_med+(thr_data*x_mad))) & (x>(x_med-(thr_data*x_mad))) & (y<(y_med+(thr_data*y_mad))) & (y>(y_med-(thr_data*y_mad))) & (x>x.min()) & (y>y.min())) #(x>0) & (y>0) & 
         else:
-            valid_ind = ((x>np.nanmin(x)) & (y>np.nanmin(y)))
+        valid_ind = ((x>np.nanmin(x)) & (y>np.nanmin(y)))
         if plot_log:
             g = sns.jointplot(np.log(x[valid_ind]), np.log(y[valid_ind]), kind="reg",dropna=True,color='k', space=0,joint_kws={'robust':robust},xlim=xlim,ylim=ylim,truncate=truncate)#, stat_func=r,ylim=ylim
         else:
@@ -87,25 +87,25 @@ def metric2mmp(df,sel_met,roi_id,median=True,hemi='L',calc_log=False):
     mmp_sel_met[np.isnan(avg_vox_vals_mmp[sel_met].to_numpy())]=min_val if not calc_log else np.log(min_val)
     return mmp_sel_met
 
-def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad=2,rnd_method='smash',l=5,u=95,p_uthr=0.06,colorbar=True,xlim=None,ylim=None,p_xlim=[-0.5,0.5],plot=True,print_text=False,plot_rnd=True,plot_surface=True,x_surr_corrs=None):
+def valid_data_index(x,y,n_mad=2):
     x[pd.isna(x)]=x.min()#0
     y[pd.isna(y)]=y.min()#0
     x = x.astype(float)
     y = y.astype(float)
     if not isinstance(n_mad, str):
-        x_mad = stats.median_absolute_deviation(x[x>x.min()],nan_policy='omit') #[x>0]
+        x_mad = stats.median_absolute_deviation(x[x>x.min()],nan_policy='omit')
         x_med = np.nanmedian(x[x>x.min()])
-        y_mad = stats.median_absolute_deviation(y[y>y.min()],nan_policy='omit') #[y>0]
+        y_mad = stats.median_absolute_deviation(y[y>y.min()],nan_policy='omit')
         y_med = np.nanmedian(y[y>y.min()])
-        valid_ind = ((x<(x_med+(n_mad*x_mad))) & (x>(x_med-(n_mad*x_mad))) & (y<(y_med+(n_mad*y_mad))) & (y>(y_med-(n_mad*y_mad))) & (x>x.min()) & (y>y.min())) #(x>0) & (y>0) & 
+        valid_ind = ((x<(x_med+(n_mad*x_mad))) & (x>(x_med-(n_mad*x_mad))) & (y<(y_med+(n_mad*y_mad))) & (y>(y_med-(n_mad*y_mad))) & (x>x.min()) & (y>y.min()))
     else:
         valid_ind = ((x>np.nanmin(x)) & (y>np.nanmin(y)))
+    return valid_ind
+
+def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad=2,rnd_method='smash',l=5,u=95,p_uthr=0.06,colorbar=True,xlim=None,ylim=None,p_xlim=[-0.5,0.5],plot=True,print_text=False,plot_rnd=True,plot_surface=True,x_surr_corrs=None):
+    valid_ind = valid_data_index(x,y,n_mad=n_mad)
     test_r,test_p = stats.pearsonr(x[valid_ind], y[valid_ind])
     if test_p<p_uthr:
-        #BrainSmash
-        from brainsmash.mapgen.base import Base 
-        from brainsmash.mapgen.eval import base_fit
-        from brainsmash.mapgen.stats import pearsonr, pairwise_r, nonparp
         dist = distmat[valid_ind,:]
         dist = dist[:,valid_ind]
         if (x_surr_corrs is None):

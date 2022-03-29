@@ -133,6 +133,7 @@ else:
 ```
 
 ```python
+#list(cohorts_metadata.keys())[:-1] when site ='all' is already included
 for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#list(cohorts_metadata.keys())[:1]:#
     for coh in list(cohorts_metadata[site].keys())[:1]:#cohorts_metadata[site].keys():#list(cohorts_metadata[site].keys())[:1]:#
         project_id = cohorts_metadata[site][coh]['project_id']
@@ -158,6 +159,15 @@ for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#l
             g = src.functions.plot_joint(avg_vox_vals[x_var],avg_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True)
         plt.suptitle('{}.{}'.format(site,coh))
 
+```
+
+```python
+import src.functions
+```
+
+```python
+%load_ext autoreload
+%autoreload 2
 ```
 
 ```python
