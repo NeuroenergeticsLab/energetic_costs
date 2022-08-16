@@ -196,7 +196,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -217,11 +217,11 @@ example_ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==cohorts_metadata[
 #
 
 ## Individual voxelwise scatterplot
-r_param,_=stats.pearsonr(example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),x_var],example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),y_var])
-p_np = nonparp(r_param, cohorts_metadata[reference_site][reference_cohort]['individual_smash'][example_sid][f'smash_{x_var}-{y_var}'])
-p_np = p_np if p_np>0 else 0.00001
+r_vox_param,_=stats.pearsonr(example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),x_var],example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),y_var])
+p_vox_np = nonparp(r_vox_param, cohorts_metadata[reference_site][reference_cohort]['individual_smash'][example_sid][f'smash_{x_var}-{y_var}'])
+p_vox_np = p_vox_np if p_vox_np>0 else 0.00001
 g = src.functions.plot_joint(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,
-                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_np)
+                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_vox_np)
 
 ## Smash random distribution
 plt.figure(figsize=(2,5))
@@ -324,10 +324,9 @@ plt.gca().set_xlabel('Pearson correlation')
 #### 1C. Group analysis
 
 ```python
-plot_voxelwise = False
-selected_df = all_ind_vox_vals if plot_voxelwise else all_ind_roi_vals
-s = 0.1 if plot_voxelwise else  25
-
+#plot_voxelwise = False
+#selected_df = all_ind_vox_vals if plot_voxelwise else all_ind_roi_vals
+#s = 0.1 if plot_voxelwise else  25
 palette_regplot_index = 5
 for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     filtered_index_lists = []
@@ -349,49 +348,20 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot_index += 4
 ```
 
-```python
-#SHow that the relationship is linear
-palette_regplot_index = 12 #12 for tum.b 5 for TUM.a1
-for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
-    filtered_index_lists = []
-    np_null_dists = []
-    filter_labels = []
-    palette_regplot = []
-    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())[-1:]):
-        cohort = f'{site}.{coh}'
-        filtered_index_lists += [all_avg_roi_vals.cohort==cohort]
-        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
-        filter_labels += [cohort]
-        if cix<2:
-            palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
-        else:
-            palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
-    src.functions.multiple_joinplot(all_avg_roi_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
-                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25,
-                      xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
-    palette_regplot_index += 4
-```
-
-### Energy density mapping
-#### Definition
+### Figure 2. Energy density distribution
+#### 2A. Calculation
 
 ```python
-site = 'TUM'
-coh = 'a1'
-avg_vox_vals = all_avg_vox_vals[all_avg_vox_vals.cohort=='{}.{}'.format(site,coh)].copy()
-r_param,p_param=stats.pearsonr(avg_vox_vals.loc[avg_vox_vals[conn_metric].notnull(),x_var],avg_vox_vals.loc[avg_vox_vals[conn_metric].notnull(),y_var])
-p_np = nonparp(r_param, cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)])
-p_np = p_np if p_np>0 else 0.00001
-g = src.functions.plot_joint(avg_vox_vals[x_var],avg_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,
-                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_np)
-plt.suptitle('{}.{}'.format(site,coh))
+## Individual example
+g = src.functions.plot_joint(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,
+                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_vox_np)
+#plt.suptitle(f'{cohorts_metadata[reference_site][reference_cohort]["sub_pref"] % example_sid} {reference_site}.{reference_cohort}')
 
 plt.figure(figsize=(3,3))
-avg_vox_vals['residual'] = pg.linear_regression(avg_vox_vals[x_var],avg_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)['residuals']
-sns.scatterplot(x_var,'residual',data=avg_vox_vals,s=3*s,legend=False,hue='residual', palette=sel_cm,
-                vmin=avg_vox_vals.residual.quantile(0.25),vmax=avg_vox_vals.residual.quantile(0.75))
-plt.gca().set_xlabel(xlabel)
-plt.gca().set_ylabel('residual')
+example_ind_vox_vals['residual'] = pg.linear_regression(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)['residuals']
+sns.scatterplot(x_var,'residual',data=example_ind_vox_vals,s=3*s,legend=False,hue='residual', palette=sel_cm,
+                vmin=example_ind_vox_vals.residual.quantile(0.3),vmax=example_ind_vox_vals.residual.quantile(0.7))
+plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
 
 ```
 
@@ -416,9 +386,32 @@ for site in list(cohorts_metadata.keys()):#[:-1]:#cohorts_metadata.keys():#
                    x_surr_corrs=cohorts_metadata[site][coh]['smash_sd_{}-{}'.format(x_var,y_var)])
 ```
 
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### bin
 <!-- #endregion -->
+
+```python
+#SHow that the relationship is linear
+palette_regplot_index = 12 #12 for tum.b 5 for TUM.a1
+for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
+    filtered_index_lists = []
+    np_null_dists = []
+    filter_labels = []
+    palette_regplot = []
+    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())[-1:]):
+        cohort = f'{site}.{coh}'
+        filtered_index_lists += [all_avg_roi_vals.cohort==cohort]
+        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
+        filter_labels += [cohort]
+        if cix<2:
+            palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
+        else:
+            palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
+    src.functions.multiple_joinplot(all_avg_roi_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
+                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25,
+                      xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
+    palette_regplot_index += 4
+```
 
 ```python
 #list(cohorts_metadata.keys())[:-1] when site ='all' is already included
