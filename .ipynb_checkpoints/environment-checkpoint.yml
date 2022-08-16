@@ -20,6 +20,7 @@ dependencies:
   - scipy=1.4.1
   - scikit-learn=1.0.2
   - nodejs
+  - ptitprince
   - pip
   - pip:
     - bctpy

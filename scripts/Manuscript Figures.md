@@ -36,6 +36,8 @@ from brainsmash.mapgen.base import Base
 from brainsmash.mapgen.eval import base_fit
 from brainsmash.mapgen.stats import pearsonr, pairwise_r, nonparp
 
+from ptitprince import half_violinplot
+
 sns.set_context("notebook", font_scale=1.5)
 sns.set_style("whitegrid")
 
@@ -170,7 +172,20 @@ else:
     if 'index' in all_ind_vox_vals.columns: all_ind_vox_vals.drop(['index'], axis = 1, inplace=True)
     with open(os.path.join(root_dir,'gx_all-cohorts_data_nsubj-{}_{}-{}_v1.1.pickle'.format(total_n_subj,conn_metric,dc_type)), 'rb') as f:
         cohorts_metadata = pickle.load(f)
-
+    all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
+    
+    ### UPDATE!
+    sid2sex = {}
+    for site in ['TUM','VIE']:
+        for coh in cohorts_metadata[site].keys():
+            for sidx,sid in enumerate(cohorts_metadata[site][coh]['sids']):
+                sid2sex[cohorts_metadata[site][coh]['sub_pref'] % sid]= 'F' if cohorts_metadata[site][coh]['sex'][sidx]==-1 else 'M'
+    
+    subj_ages={'HC002':23,'HC003':24,'HC004':28,'HC006':22,'HC007':22,'HC009':42,'HC010':20,'HC012':36,'HC013':24,'HC014':25,
+         's003':35,'s007':46,'s012':38,'s014':35,'s017':52,'s020':41,'s023':38,'s025':50,'s026':52,'s028':24,
+         's029':42,'s030':28,'s031':25,'s032':26,'s033':22,'s034':27,'s035':24,'s036':31,'s037':27,'s038':27
+        }
+    ### UPDATE end
 ```
 
 #### Colors
@@ -223,9 +238,96 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 
 ```
 
+<!-- #region tags=[] -->
+#### 1B. Individual subject analysis
+<!-- #endregion -->
+
+```python
+selected_df = all_ind_vox_vals
+s = 0.1
+selected_site = 'TUM' #options: TUM or VIE
+coh0 = 'a1' #options: a1 or b, if the latter (replication cohort TUM), it will ignore the coh1 variable
+coh1 = 'a2' #options: a2
+selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
+s1 = f'{selected_site}.{coh0}'
+s2 = f'{selected_site}.{coh1}'
+scatter_color = plt.cm.tab20c([7]).flatten() if selected_site=='TUM' else plt.cm.tab20c([11]).flatten()#
+if((selected_site=='TUM') & (coh0=='b')):
+    scatter_color = plt.cm.tab20c([14]).flatten()
+    selected_site_sids = cohorts_metadata[selected_site]['b']['sids']
+for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids']):
+    subj_id = cohorts_metadata[selected_site][coh0]['sub_pref'] % sid
+    ylim=(5,50) if sid not in [3,26,33] else (5,60)
+    if sid in [26,28,31,34,36]: ylim=(5,40)
+    if ((selected_site=='VIE') & (sid not in [4,9,12,14])): ylim=(10,65)
+    selected_coh = s1 if sid in cohorts_metadata[selected_site][coh0]['sids'] else s2
+    filtered_index = [((selected_df.cohort==selected_coh) & (selected_df.sid==subj_id))]
+    smash_dists = [cohorts_metadata[selected_site][selected_coh.split('.')[1]]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
+    cohorts_list = [s1,s2]
+    color_list = [cohorts_metadata[selected_site][coh0]['color'],cohorts_metadata[selected_site][coh1]['color']]
+    if((sid in cohorts_metadata[selected_site][coh1]['sids']) & (sid in cohorts_metadata[selected_site][coh0]['sids'])):
+        filtered_index+=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
+        smash_dists+=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
+        src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list,color_list,scatter_color,
+                      #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
+    elif(sid in cohorts_metadata[selected_site][coh1]['sids']):
+        filtered_index=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
+        smash_dists=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
+        src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[1:],color_list[1:],scatter_color,
+                      #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
+    else:
+        src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[:1],color_list[:1],scatter_color,
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
+ 
+```
+
+```python
+if 'reg_ind_lev_df' not in locals():
+    reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p','slope'])
+    for site in list(cohorts_metadata.keys())[:-1]:
+        for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
+            cohort = f'{site}.{coh}'
+            for sid in cohorts_metadata[site][coh]['sids']:
+                subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
+                ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
+                ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
+                reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1], 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
+                
+    reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
+    reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
+    reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
+    reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
+
+cohort_order = ['TUM.a1','TUM.a2','TUM.b','VIE.a1','VIE.a2']
+coh_colors = {}
+for coh in cohort_order:
+    coh_colors[coh]=cohorts_metadata[coh.split('.')[0]][coh.split('.')[1]]['color']
+
+f, ax = plt.subplots(figsize=(5,1.5*len(cohort_order))) #7,5
+ax=half_violinplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,scale = "area", inner = None, orient = 'h',linewidth=0,order=cohort_order[::-1])
+ax=sns.stripplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,edgecolor="white",size = 7, jitter = 1, zorder = 0, orient = 'h', alpha=0.88,
+                         linewidth=0.88, edgecolors='w',order=cohort_order[::-1])
+ax=sns.boxplot(x='r',y='cohort',data=reg_ind_lev_df, color = "black", width = .15, zorder = 10, showcaps = True,order=cohort_order[::-1], 
+boxprops = {'facecolor':'none', "zorder":10},showfliers=False, whiskerprops = {'linewidth':2, "zorder":10},saturation = 1, orient = 'h')
+[s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['right']]]
+plt.gca().xaxis.grid(False)
+plt.gca().yaxis.grid(True)
+plt.gca().set_xlabel('Pearson correlation')
+
+
+
+
+```
+
 #### 1C. Group analysis
 
 ```python
+plot_voxelwise = False
+selected_df = all_ind_vox_vals if plot_voxelwise else all_ind_roi_vals
+s = 0.1 if plot_voxelwise else  25
+
 palette_regplot_index = 5
 for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     filtered_index_lists = []
@@ -268,51 +370,6 @@ for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
                       plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25,
                       xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
     palette_regplot_index += 4
-```
-
-<!-- #region tags=[] -->
-#### Individual level
-<!-- #endregion -->
-
-```python
-selected_df = all_ind_vox_vals #all_mm_vox_df
-s = 0.1 #25 #
-selected_site = 'TUM'
-coh0 = 'a1'
-coh1 = 'a2'
-selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
-s1 = f'{selected_site}.{coh0}'
-s2 = f'{selected_site}.a2'
-scatter_color = plt.cm.tab20c([7]).flatten() if selected_site=='TUM' else plt.cm.tab20c([11]).flatten()#
-if((selected_site=='TUM') & (coh0=='b')):
-    scatter_color = plt.cm.tab20c([14]).flatten()
-    selected_site_sids = cohorts_metadata[selected_site]['b']['sids']
-for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids']):
-    subj_id = cohorts_metadata[selected_site][coh0]['sub_pref'] % sid
-    ylim=(5,50) if sid not in [3,26,33] else (5,60)
-    if sid in [26,28,31,34,36]: ylim=(5,40)
-    if ((selected_site=='VIE') & (sid not in [4,9,12,14])): ylim=(10,65)
-    selected_coh = s1 if sid in cohorts_metadata[selected_site][coh0]['sids'] else s2
-    filtered_index = [((selected_df.cohort==selected_coh) & (selected_df.sid==subj_id))]
-    smash_dists = [cohorts_metadata[selected_site][selected_coh.split('.')[1]]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
-    cohorts_list = [s1,s2]
-    color_list = [cohorts_metadata[selected_site][coh0]['color'],cohorts_metadata[selected_site][coh1]['color']]
-    if((sid in cohorts_metadata[selected_site][coh1]['sids']) & (sid in cohorts_metadata[selected_site][coh0]['sids'])):
-        filtered_index+=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
-        smash_dists+=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
-        src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list,color_list,scatter_color,
-                      #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
-    elif(sid in cohorts_metadata[selected_site][coh1]['sids']):
-        filtered_index=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
-        smash_dists=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
-        src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[1:],color_list[1:],scatter_color,
-                      #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
-    else:
-        src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[:1],color_list[:1],scatter_color,
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
- 
 ```
 
 ### Energy density mapping
@@ -533,11 +590,12 @@ import src.functions
 ```
 
 ```python
-#!conda list -p {sys.prefix}
+!conda list -p {sys.prefix}
 #import sys
 #sys.prefix
 #!conda install --yes --prefix {sys.prefix} -c conda-forge nibabel=3.2.2
-os.environ["PATH"]
+#os.environ["PATH"]
+#!conda install --yes --prefix {sys.prefix} -c conda-forge ptitprince
 ```
 
 ```python
