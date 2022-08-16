@@ -6,7 +6,6 @@ import seaborn as sns
 
 import matplotlib.colors as clrs
 from matplotlib import colorbar
-import matplotlib.image as mpimg
 from matplotlib import pyplot as plt
 
 from nilearn import input_data
@@ -150,14 +149,14 @@ def plot_rnd_dist(surr_corrs,r_param,p_non_param,ax,xlabel='',ylabel='',xlim=[-0
     plt.gca().grid(False,axis='x')
     plt.gca().set(xlabel='Correlation',ylabel='Density')
 
-def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,colorbar=False,fig_title=''):
-    if colorbar:
+def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False,fig_title=''):
+    if show_colorbar:
         w, h = constants.LANDSCAPE_SIZE
         aspect = w / h
         fig = plt.figure(figsize=(5, 5/aspect))
         ax = fig.add_axes([0.075, 0, 0.85, 0.85])
         cax = fig.add_axes([0.44, 0.02, 0.12, 0.07])
-    
+    #print(constants.DLABEL_FILE)
     pscalar(
         file_out=met_fn,
         pscalars=met,
@@ -171,7 +170,7 @@ def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,colorbar=False,fig_
     cur_ax.imshow(img)
     cur_ax.axis('off')
     
-    if colorbar:
+    if show_colorbar:
         cnorm = clrs.Normalize(vmin=np.nanpercentile(met, vlow), vmax=np.nanpercentile(met, vhigh))  # only important for tick placing
         cmap = plt.get_cmap(cmap)
         cbar = colorbar.ColorbarBase(cax, cmap=cmap, norm=cnorm, orientation='horizontal')
@@ -244,3 +243,9 @@ def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,pa
         g.ax_marg_x.get_legend().remove()
         leg = g.ax_joint.legend(legend_handles[0],legend_handles[1],bbox_to_anchor=legend_bbox_to_anchor, loc="lower left",title=legend_title,title_fontsize=16)#,title='orig_leg[1][7]'
         leg._legend_box.align = "left"
+        
+def remove_outliers(x,mad_thr):
+    x_mad = stats.median_absolute_deviation(x,nan_policy='omit') #[x>0]
+    x_med = np.nanmedian(x)
+    valid_ind = ((x<(x_med+(mad_thr*x_mad))) & (x>(x_med-(mad_thr*x_mad))))
+    return valid_ind

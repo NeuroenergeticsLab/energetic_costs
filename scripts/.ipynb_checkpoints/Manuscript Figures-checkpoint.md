@@ -26,6 +26,7 @@ import numpy as np
 from scipy import stats
 import seaborn as sns
 from nilearn import datasets
+import pingouin as pg
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
@@ -38,6 +39,7 @@ from brainsmash.mapgen.stats import pearsonr, pairwise_r, nonparp
 sns.set_context("notebook", font_scale=1.5)
 sns.set_style("whitegrid")
 
+#!{sys.prefix}/bin/pip install -e ../
 import src.functions
 %load_ext autoreload
 %autoreload 2
@@ -48,10 +50,19 @@ import src.functions
 <!-- #endregion -->
 
 ```python
-os.environ["PATH"]+=':/RAID1/jupytertmp/fdgquant2016/notebooks/ext_data/workbench_v1.4.2/bin_linux64'
+os.environ["PATH"]+=':/home/tumnic/gcastrillon/workbench_v1.4.2/bin_linux64'
+#':/RAID1/jupytertmp/fdgquant2016/notebooks/ext_data/workbench_v1.4.2/bin_linux64'
 os.environ["QT_QPA_PLATFORM"]='offscreen'
 
+os.environ["OUTDATED_IGNORE"]='1'
+#os.environ["TEMP"]=os.path.join(os.environ["HOME"],'tmp')
+os.environ["TMP"]=os.path.join(os.environ["HOME"],'tmp')
+import tempfile
+tempfile.tempdir=os.environ["TMP"]
+#tempfile.gettempdir()
+
 root_dir = '../data'
+results_dir = '../results'
 img_dir = os.path.join(root_dir,'img_files')
 
 thr=0.25
@@ -162,14 +173,61 @@ else:
 
 ```
 
-<!-- #region tags=[] -->
-### Energy demand scales linearly with functional connectivity
-#### Group level
+#### Colors
+
+```python
+sel_cm = 'RdBu_r'
+gray_c = [0.77,0.77,0.77,1]
+extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
+```
+
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
+### Figure 1. Energy metabolism scales linearly with brain connectivity
+#### 1A. Multimodal brain imaging
 <!-- #endregion -->
 
 ```python
+reference_site = 'TUM'
+reference_cohort = 'a1'
+example_sid = 20
+example_ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==cohorts_metadata[reference_site][reference_cohort]['sub_pref'] % example_sid) & (all_ind_vox_vals.cohort==f'{reference_site}.{reference_cohort}')].copy()
+
+## Surface representation
+#src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,y_var,'roi_id')[1:],os.path.join(results_dir,'figures',f'fig1A_surf-{y_var}'),
+#          cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'cividis')(np.arange(0,getattr(plt.cm,'cividis').N))))),
+#          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual CMRglc')
+#src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,x_var,'roi_id')[1:],os.path.join(results_dir,'figures',f'fig1A_surf-{x_var}'),
+#          cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'viridis')(np.arange(0,getattr(plt.cm,'viridis').N))))),
+#          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual DC')
+#
+
+## Individual voxelwise scatterplot
+r_param,_=stats.pearsonr(example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),x_var],example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),y_var])
+p_np = nonparp(r_param, cohorts_metadata[reference_site][reference_cohort]['individual_smash'][example_sid][f'smash_{x_var}-{y_var}'])
+p_np = p_np if p_np>0 else 0.00001
+g = src.functions.plot_joint(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,
+                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_np)
+
+## Smash random distribution
+plt.figure(figsize=(2,5))
+src.functions.plot_rnd_dist(cohorts_metadata[reference_site][reference_cohort]['individual_smash'][example_sid][f'smash_{x_var}-{y_var}'],
+                            r_param,p_np,plt.gca(),xlabel=xlabel,ylabel=ylabel,xlim=(-0.5,0.5),print_text=True)
+
+## Individual ROIwise scatterplot
+example_ind_roi_vals = example_ind_vox_vals.groupby('roi_id').median()
+r_roi_param,_=stats.pearsonr(example_ind_roi_vals[x_var],example_ind_roi_vals[y_var])
+p_roi_np = nonparp(r_roi_param, cohorts_metadata[reference_site][reference_cohort]['individual_smash'][example_sid][f'smash_{x_var}-{y_var}'])
+p_roi_np = p_roi_np if p_roi_np>0 else 0.00001
+g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_var],s=25,robust=False,kdeplot=False,truncate=True,
+                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_roi_np)
+
+```
+
+#### 1C. Group analysis
+
+```python
 palette_regplot_index = 5
-for site in list(cohorts_metadata.keys()):#[:-1]:#cohorts_metadata.keys():#
+for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     filtered_index_lists = []
     np_null_dists = []
     filter_labels = []
@@ -257,8 +315,48 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
  
 ```
 
-```python
+### Energy density mapping
+#### Definition
 
+```python
+site = 'TUM'
+coh = 'a1'
+avg_vox_vals = all_avg_vox_vals[all_avg_vox_vals.cohort=='{}.{}'.format(site,coh)].copy()
+r_param,p_param=stats.pearsonr(avg_vox_vals.loc[avg_vox_vals[conn_metric].notnull(),x_var],avg_vox_vals.loc[avg_vox_vals[conn_metric].notnull(),y_var])
+p_np = nonparp(r_param, cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)])
+p_np = p_np if p_np>0 else 0.00001
+g = src.functions.plot_joint(avg_vox_vals[x_var],avg_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,
+                             xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_np)
+plt.suptitle('{}.{}'.format(site,coh))
+
+plt.figure(figsize=(3,3))
+avg_vox_vals['residual'] = pg.linear_regression(avg_vox_vals[x_var],avg_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)['residuals']
+sns.scatterplot(x_var,'residual',data=avg_vox_vals,s=3*s,legend=False,hue='residual', palette=sel_cm,
+                vmin=avg_vox_vals.residual.quantile(0.25),vmax=avg_vox_vals.residual.quantile(0.75))
+plt.gca().set_xlabel(xlabel)
+plt.gca().set_ylabel('residual')
+
+```
+
+#### Energy density across cohorts
+
+```python
+exp_thr = np.log(external_datasets['expansion']['data'][:180]) if expresion_log else external_datasets['expansion']['data'][:180]
+for site in list(cohorts_metadata.keys()):#[:-1]:#cohorts_metadata.keys():#
+    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
+        cohort = f'{site}.{coh}'
+        filtered_index_lists += [all_avg_vox_vals.cohort==cohort]
+        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
+        plot_surf(metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==cohort],'signal_density','roi_id'),
+                  os.path.join(root_dir,project_id,session,'pet','{}.{}_{}'.format(site,coh,y_var)),
+                  cmap=ListedColormap(np.concatenate((np.array([[0.5,0.5,0.5,1.0]]),getattr(plt.cm,'cividis')(np.arange(0,getattr(plt.cm,'cividis').N))))),
+                  colorbar=True,vlow=10,vhigh=90,fig_title='{} {}.{}'.format(y_var,site,coh))
+        
+        sd_180rois = 
+    smash_comp(sd_180rois,exp_thr,lh_dist_full,y_nii_fn=os.path.join(img_dir,'expansion_wei2019.png'),l=5,u=95,n_mad='min',
+                   xlabel='Signal density\n[umol/(min*100g)]' if y_var==pet_metric else 'Signal density', ylabel='Brain expansion',
+                   p_uthr=1,plot=True,cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=True,plot_surface=True,
+                   x_surr_corrs=cohorts_metadata[site][coh]['smash_sd_{}-{}'.format(x_var,y_var)])
 ```
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
@@ -432,6 +530,14 @@ import src.functions
 ```python
 %load_ext autoreload
 %autoreload 2
+```
+
+```python
+#!conda list -p {sys.prefix}
+#import sys
+#sys.prefix
+#!conda install --yes --prefix {sys.prefix} -c conda-forge nibabel=3.2.2
+os.environ["PATH"]
 ```
 
 ```python

@@ -1,0 +1,32 @@
+name: ed
+channels:
+  - defaults
+  - conda-forge
+dependencies:
+  - python=3.8
+  - notebook
+  - jupyterlab
+  - jupytext
+  - matplotlib=3.3.2
+  - nilearn
+  - seaborn
+  - pingouin
+  - nipype
+  - numpy=1.20.1
+  - pandas=1.4.1
+  - openpyxl
+  - twine=3.1.1
+  - nibabel=3.1.0
+  - scipy=1.4.1
+  - scikit-learn=1.0.2
+  - nodejs
+  - pip
+  - pip:
+    - bctpy
+    - wbplot
+    - brainsmash
+    - brainspace
+    - Pillow
+    - netneurotools
+    - wordcloud
+    - git+https://github.com/MICA-MNI/ENIGMA.git
