@@ -425,6 +425,85 @@ one_sample_ttest_roi_df.groupby('ostt_signed').count().plot(kind='pie', y='roi_i
 
 ```
 
+#### 2D. Subject and network distribution
+
+```python
+all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
+all_ind_roi_vals['nw'] = all_ind_roi_vals['roi_id'].map(atlas_dict['roi2network'])
+all_ind_roi_vals['nw_consistent_rois'] = all_ind_roi_vals['nw']
+all_ind_roi_vals['ed_sign_consistent_rois'] = 0
+for roi_id in all_ind_roi_vals.roi_id.unique():
+    if np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energy_density'].to_numpy()>0)<=2:
+        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'ed_sign_consistent_rois'] = -1
+    elif np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energy_density'].to_numpy()<0)<=2:
+        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'ed_sign_consistent_rois'] = 1
+    else:
+        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'nw_consistent_rois'] = 'None'
+    #if ~((np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energy_density'].to_numpy()>0)<=2) | (np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energy_density'].to_numpy()<0)<=2)):
+    #    all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'nw_consistent_rois'] = 'None'
+
+nw_consistent_rois_palette = atlas_dict['nw2color']
+nw_consistent_rois_palette['None'] = gray_c
+
+roi_ids_order = all_ind_roi_vals.groupby('roi_id',as_index=False).median().sort_values(by='energy_density',ignore_index=True).roi_id.to_list()
+### To test the plot with less ROIS: all_ind_roi_vals[all_ind_roi_vals.roi_id.isin(all_ind_roi_vals.roi_id.unique()[::10])]
+g = sns.catplot(x='roi_id', y='energy_density', data=all_ind_roi_vals,height=3.5,aspect=2,hue='nw_consistent_rois',
+                palette=nw_consistent_rois_palette,order=roi_ids_order,legend=False,s=3)
+g.set(xticklabels=[])
+plt.gca().set_xlabel('ROI')
+plt.gca().set_ylabel('Energy density\n[umol/(min*100g)]')
+plt.gca().axhline(0, 0, 1, color='k', lw=0.75,zorder=10)
+
+avg_consistent_roi_vals = all_ind_roi_vals[all_ind_roi_vals.nw_consistent_rois!='None']
+plt.figure()
+avg_consistent_neg_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed_sign_consistent_rois<0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
+avg_consistent_neg_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
+                             labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_neg_roi_vals.index.tolist()])
+plt.figure()
+avg_consistent_pos_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed_sign_consistent_rois>0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
+avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
+                             labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_pos_roi_vals.index.tolist()])
+
+
+#low_cons_df =  mm_roi_df_cp_gx[mm_roi_df_cp_gx['conj_consistent']<0].groupby('nw').count().sort_values(by='roi_id', ascending=False)
+#high_cons_df = mm_roi_df_cp_gx[mm_roi_df_cp_gx['conj_consistent']>0].groupby('nw').count().sort_values(by='roi_id', ascending=False)
+#
+#
+#plt.figure()
+#low_cons_df.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',labels=['','','','','',''],startangle=90,colors=[atlas_dict['nw2color'][cx] for cx in low_cons_df.index.tolist()])
+#plt.figure()
+#high_cons_df.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',labels=['','','','','',''],startangle=90,colors=[atlas_dict['nw2color'][cx] for cx in high_cons_df.index.tolist()])
+
+
+```
+
+```python
+
+```
+
+```python
+#SHow that the relationship is linear
+palette_regplot_index = 12 #12 for tum.b 5 for TUM.a1
+for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
+    filtered_index_lists = []
+    np_null_dists = []
+    filter_labels = []
+    palette_regplot = []
+    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())[-1:]):
+        cohort = f'{site}.{coh}'
+        filtered_index_lists += [all_avg_roi_vals.cohort==cohort]
+        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
+        filter_labels += [cohort]
+        if cix<2:
+            palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
+        else:
+            palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
+    src.functions.multiple_joinplot(all_avg_roi_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
+                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25,
+                      xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
+    palette_regplot_index += 4
+```
+
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### bin
 <!-- #endregion -->
