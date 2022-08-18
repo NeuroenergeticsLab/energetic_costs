@@ -30,4 +30,5 @@ dependencies:
     - Pillow
     - netneurotools
     - wordcloud
+    - joypy==0.2.4
     - git+https://github.com/MICA-MNI/ENIGMA.git

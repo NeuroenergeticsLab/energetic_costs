@@ -197,7 +197,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -349,8 +349,10 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot_index += 4
 ```
 
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
+<!-- #endregion -->
 
 ```python
 ## Individual example
@@ -477,9 +479,35 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 
 ```
 
-```python
+### Figure 3. Energy density distribution relates to human cognitive functions and cortical evolution
+#### 3A. Cognitive functions
 
+```python
+import joypy
+neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-masked_ed-median_cohorts-all_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}_v1.0.csv'))
+neurosynth_order = neurosynth_masks_df[neurosynth_masks_df.energy_density!=0.0].groupby('domain', as_index=False).median().sort_values(by='energy_density',ignore_index=True)
+neurosynth_order['sorted_domain'] = neurosynth_order.index.astype(str).str.zfill(2)+'-'+neurosynth_order.domain
+sorted_domain_map = dict(zip(neurosynth_order['domain'],neurosynth_order['sorted_domain']))
+neurosynth_masks_df['sorted_domain'] = neurosynth_masks_df['domain'].map(sorted_domain_map)
+joypy.joyplot(
+    neurosynth_masks_df,#[neurosynth_masks_df.signal_density!=0.0],#[neurosynth_masks_df.inefficiency!=0.0],
+    by="sorted_domain", 
+    column="energy_density",#figsize=(5,8),
+    colormap=plt.cm.RdBu_r,
+    alpha=0.75,
+    figsize=(7,8),
+    labels=list(neurosynth_masks_df.sort_values(by='sorted_domain',ignore_index=True)['domain'].unique()),
+    #fade=True
+)#,overlap=3)#,x_range=[0,110])
+plt.gca().set_xlim([-5,5])
+plt.gca().set_xlabel('Energy density\n[umol/(min*100g)]')
+for axx in plt.gcf().get_axes()[:-1]:
+    axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
 ```
+
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] -->
+### bin
+<!-- #endregion -->
 
 ```python
 #SHow that the relationship is linear
@@ -503,10 +531,6 @@ for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
                       xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
     palette_regplot_index += 4
 ```
-
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
-### bin
-<!-- #endregion -->
 
 <!-- #region tags=[] -->
 #### Energy density across cohorts
@@ -730,6 +754,8 @@ import src.functions
 #!conda install --yes --prefix {sys.prefix} -c conda-forge nibabel=3.2.2
 #os.environ["PATH"]
 #!conda install --yes --prefix {sys.prefix} -c conda-forge ptitprince
+#!{sys.prefix}/bin/pip install -q joypy==0.2.4
+#sys.prefix
 ```
 
 ```python
