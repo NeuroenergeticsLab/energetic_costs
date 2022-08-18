@@ -349,7 +349,7 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot_index += 4
 ```
 
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
 <!-- #endregion -->
@@ -503,6 +503,40 @@ plt.gca().set_xlim([-5,5])
 plt.gca().set_xlabel('Energy density\n[umol/(min*100g)]')
 for axx in plt.gcf().get_axes()[:-1]:
     axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
+```
+
+#### 3B. Comparative neuroenergetics
+
+```python
+plt.figure(figsize=(2.5,4))
+sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),hue="ostt_signed",dodge=False,
+            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:],plt.cm.tab20c(range(20))[8][np.newaxis,:]),axis=0))
+plt.gca().get_legend().remove()
+sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
+plt.gca().set_ylabel('\n'.join(ylabel.split(' ')))
+plt.gca().set_xticklabels(['ED<0', 'ED~0', 'ED>0', 'primates'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+plt.gca().set_xlabel('one sample t-test areas')
+plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=1.5,zorder=10)
+plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=1.5,zorder=10)
+
+plt.figure(figsize=(2.5,4))
+apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(['sid','ostt_signed'],as_index=False).median()
+sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
+            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
+plt.gca().get_legend().remove()
+plt.gca().set(xlabel='one sample t-test areas', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['ED<0', 'ED~0', 'ED>0'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+
+apes_diff_sign = []
+for ix in range(-1,2):
+    apes_diff_sign += [stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)[1]]
+apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
+for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
+    if apes_diff_sign[ix]<0.055:
+        sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
+        plt.gca().text(ix, plt.gca().get_ylim()[1]-0.1, sign_text, ha='center', va='bottom', color='r')
+
 ```
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] -->
