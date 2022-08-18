@@ -481,8 +481,10 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 
 ```
 
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 3. Energy density distribution relates to human cognitive functions and cortical evolution
 #### 3A. Cognitive functions
+<!-- #endregion -->
 
 ```python
 import joypy
@@ -558,10 +560,73 @@ src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_
 valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
 allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
 plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
-print(allometric_fit_params)
 
 allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
+```
+
+### Figure 4. Layer specific cellular organization of energy dense regions
+#### 4A. Histological cell density across cortical layers 
+
+```python
+## Ultra-high resolution histological slice from the BigBrain atlas
+bb_vol = nib.load(os.path.join(root_dir,'external','kwagstyl_cortical_layers_tutorial','full8_200um_optbal.nii.gz'))
+bb_layers = nib.load(os.path.join(root_dir,'external','kwagstyl_cortical_layers_tutorial','segmentation_200um.nii.gz'))
+section = 385 # seleceted arbitrarily
+bb_layers_section=bb_layers.dataobj[section]
+bb_histo_section = bb_vol.dataobj[section]
+plt.imshow(np.flipud(bb_histo_section),cmap='bone')
+plt.gca().axis('off')
+plt.figure()
+plt.imshow(np.flipud(bb_histo_section[480:560,297:390]),cmap='bone') # seleceted arbitrarily
+plt.gca().axis('off')
+bb_layers_section[bb_layers_section<1]=np.nan
+bb_layers_section[np.isin(bb_layers_section,[2,3,5,6])]=np.nan
+plt.gca().contour(np.flipud(bb_layers_section[480:560,297:390]), colors='k')
+
+## Big brain upsample to 50 cortical layers between pial and white matter surfaces
+bb_profiles = np.loadtxt(os.path.join(root_dir,'external','BigBrainWarp','tpl-fs_LR_den-32k_desc-profiles.txt'),delimiter=',')
+bb_profiles_inv = bb_profiles * -1
+bb_profiles_inv_all = surface_to_parcel(np.sum(bb_profiles_inv,axis=0),'glasser_360_conte69')[1:]
+bbl_roi = np.array([])
+for bb_layer in bb_profiles_inv:
+    bbl_roi = np.append(bbl_roi,surface_to_parcel(np.array(bb_layer),'glasser_360_conte69')[1:][np.newaxis,:],axis=0) if bbl_roi.shape[0]>0 else surface_to_parcel(np.array(bb_layer),'glasser_360_conte69')[1:][np.newaxis,:]
+bbl_roi_mean = np.mean(bbl_roi,axis=0)
+bbl_roi_skew = []
+for bbp in bbl_roi.T:
+    bbl_roi_skew += [stats.skew(bbp, bias=True)]
+bbl_roi_skew = np.array(bbl_roi_skew)
+
+##example datapoints selected visually from the scatter plot
+lskew = np.where((bbl_roi_skew[:180]>-2.25) & (bbl_roi_skew[:180]<-2.2) & (avg_roi_ed_vals>5))[0][0]
+hskew=np.where((bbl_roi_skew[:180]<-1.38) & (bbl_roi_skew[:180]>-1.4) & (avg_roi_ed_vals<0) & (avg_roi_ed_vals>-0.3))[0][0]
+
+plt.figure(figsize=(3,3))
+plt.plot(bbl_roi[:,lskew],np.arange(50,0,-1),color=getattr(plt.cm,'magma')(range(256))[24],label='left')
+plt.plot(bbl_roi[:,hskew],np.arange(50,0,-1),color=getattr(plt.cm,'magma')(range(256))[196],label='right') #231
+plt.gca().set(ylim=(0,50),yticks=(0,50),yticklabels=['wm','pial'],xlabel='staining\nintensity',ylabel='cortical depth')
+plt.gca().xaxis.get_major_formatter().set_powerlimits((0, 1))
+
+plt.figure(figsize=(3,3))
+sns.kdeplot(bbl_roi[:,lskew],color=getattr(plt.cm,'magma')(range(256))[24],label='left')
+sns.kdeplot(bbl_roi[:,hskew],color=getattr(plt.cm,'magma')(range(256))[196],label='right')#231
+plt.gca().yaxis.get_major_formatter().set_powerlimits((0, 1))
+plt.gca().xaxis.get_major_formatter().set_powerlimits((0, 1))
+plt.gca().set(xlabel='staining\nintensity')
+
+```
+
+#### 4B. Relationship with cell density in infragranular layers 
+
+```python
+src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig4B_bb-skew_vs_ed.png'),
+                         ylabel='energy density [umol/(min*100g)]', xlabel='cellular density skewness [a.u.]',
+                         l=5,u=95,n_mad='min',p_uthr=1,plot=True,cmap=ListedColormap(extended_cm),print_text=False,plot_rnd=False,plot_surface=False,
+                         x_surr_corrs=cohorts_metadata['all']['smash_bb-skew_{}-{}'.format(x_var,y_var)])
+plt.gca().scatter(bbl_roi_skew[[lskew,hskew]],avg_roi_ed_vals[[lskew,hskew]],s=300, alpha=0.6,
+                  c=np.concatenate((getattr(plt.cm,'magma')(range(256))[24][np.newaxis,:],getattr(plt.cm,'magma')(range(256))[231][np.newaxis,:]),axis=0))
+#plt.figure()
+#plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(img_dir,'bb_skew'),colorbar=True,cmap='magma',fig_title='BB skewness',vlow=5,vhigh=95)
 ```
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
