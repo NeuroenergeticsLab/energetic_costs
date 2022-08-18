@@ -24,9 +24,11 @@ import os,glob,pickle,re,sys,json
 import pandas as pd
 import numpy as np
 from scipy import stats
+from scipy.optimize import curve_fit
 import seaborn as sns
 from nilearn import datasets, input_data
 import pingouin as pg
+import nibabel as nib
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
@@ -197,7 +199,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -349,8 +351,10 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot_index += 4
 ```
 
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
+<!-- #endregion -->
 
 ```python
 ## Individual example
@@ -477,9 +481,92 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 
 ```
 
+### Figure 3. Energy density distribution relates to human cognitive functions and cortical evolution
+#### 3A. Cognitive functions
+
 ```python
+import joypy
+neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-masked_ed-median_cohorts-all_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}_v1.0.csv'))
+neurosynth_order = neurosynth_masks_df[neurosynth_masks_df.energy_density!=0.0].groupby('domain', as_index=False).median().sort_values(by='energy_density',ignore_index=True)
+neurosynth_order['sorted_domain'] = neurosynth_order.index.astype(str).str.zfill(2)+'-'+neurosynth_order.domain
+sorted_domain_map = dict(zip(neurosynth_order['domain'],neurosynth_order['sorted_domain']))
+neurosynth_masks_df['sorted_domain'] = neurosynth_masks_df['domain'].map(sorted_domain_map)
+joypy.joyplot(
+    neurosynth_masks_df,#[neurosynth_masks_df.signal_density!=0.0],#[neurosynth_masks_df.inefficiency!=0.0],
+    by="sorted_domain", 
+    column="energy_density",#figsize=(5,8),
+    colormap=plt.cm.RdBu_r,
+    alpha=0.75,
+    figsize=(7,8),
+    labels=list(neurosynth_masks_df.sort_values(by='sorted_domain',ignore_index=True)['domain'].unique()),
+    #fade=True
+)#,overlap=3)#,x_range=[0,110])
+plt.gca().set_xlim([-5,5])
+plt.gca().set_xlabel('Energy density\n[umol/(min*100g)]')
+for axx in plt.gcf().get_axes()[:-1]:
+    axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
+```
+
+#### 3B. Comparative neuroenergetics
+
+```python
+plt.figure(figsize=(2.5,4))
+sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),hue="ostt_signed",dodge=False,
+            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:],plt.cm.tab20c(range(20))[8][np.newaxis,:]),axis=0))
+plt.gca().get_legend().remove()
+sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
+plt.gca().set_ylabel('\n'.join(ylabel.split(' ')))
+plt.gca().set_xticklabels(['ED<0', 'ED~0', 'ED>0', 'primates'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+plt.gca().set_xlabel('one sample t-test areas')
+plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=1.5,zorder=10)
+plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=1.5,zorder=10)
+
+plt.figure(figsize=(2.5,4))
+apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(['sid','ostt_signed'],as_index=False).median()
+sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
+            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
+plt.gca().get_legend().remove()
+plt.gca().set(xlabel='one sample t-test areas', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['ED<0', 'ED~0', 'ED>0'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+
+apes_diff_sign = []
+for ix in range(-1,2):
+    apes_diff_sign += [stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)[1]]
+apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
+for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
+    if apes_diff_sign[ix]<0.055:
+        sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
+        plt.gca().text(ix, plt.gca().get_ylim()[1]-0.1, sign_text, ha='center', va='bottom', color='r', size=24)
 
 ```
+
+#### 3C. Allometric brain expansion
+
+```python
+chimp2human_expansion = []
+for _, h in enumerate(['lh', 'rh']):
+    chimp2human_expansion = np.append(chimp2human_expansion, nib.load(os.path.join(root_dir,'external',f'Wei2019/{h}.32k.chimp2humanF.smoothed15.shape.gii')).darrays[0].data)
+chimp2human_expansion = surface_to_parcel(chimp2human_expansion,'glasser_360_conte69')[1:]
+avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id')
+
+src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_allometric_ed-chimp2humanexpansion.png'),
+           l=5,u=95,n_mad='min',ylabel='Energy density\n[umol/(min*100g)]', xlabel='Brain expansion [a.u.]',p_uthr=1,plot=True,
+           cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=False,plot_surface=False,x_surr_corrs=cohorts_metadata['all']['smash_sd_{}-{}'.format(x_var,y_var)],
+          )
+
+valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
+allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
+plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
+print(allometric_fit_params)
+
+allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
+plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
+```
+
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+### bin
+<!-- #endregion -->
 
 ```python
 #SHow that the relationship is linear
@@ -503,10 +590,6 @@ for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
                       xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
     palette_regplot_index += 4
 ```
-
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
-### bin
-<!-- #endregion -->
 
 <!-- #region tags=[] -->
 #### Energy density across cohorts
@@ -730,6 +813,8 @@ import src.functions
 #!conda install --yes --prefix {sys.prefix} -c conda-forge nibabel=3.2.2
 #os.environ["PATH"]
 #!conda install --yes --prefix {sys.prefix} -c conda-forge ptitprince
+#!{sys.prefix}/bin/pip install -q joypy==0.2.4
+#sys.prefix
 ```
 
 ```python

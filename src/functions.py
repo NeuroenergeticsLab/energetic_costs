@@ -19,6 +19,11 @@ from wbplot import constants
 from IPython.display import Image
 import matplotlib.image as mpimg
 
+def remove_ext(nii_file):
+    ext = nii_file.split('.')[-1]
+    fn = '.'.join(nii_file.split('.')[:-2]) if ext=='gz' else '.'.join(nii_file.split('.')[:-1])
+    return fn
+
 def plot_joint(x,y,s=0,x_label='',y_label='', robust=False,xlim=None,ylim=None,return_plot_var=False,p_smash=None,kdeplot=False,truncate=True,xlim0=False,thr_data=False,plot_log=False):
     if thr_data:
         x[pd.isna(x)]=x.min()#0
@@ -69,13 +74,13 @@ def metric2mmp(df,sel_met,roi_id,median=True,hemi='L',calc_log=False):
         agg_mode_text = {sel_met: stats.mode}
         avg_vox_vals_mmp = avg_vox_vals_mmp.groupby(roi_id, as_index=False).agg(agg_mode_text)
         avg_vox_vals_mmp[sel_met] = avg_vox_vals_mmp[sel_met].str[0].str[0]
-    last_roi = 181 if hemi=='L' else 361
-    sel_rois = ((avg_vox_vals_mmp[roi_id]>0) & (avg_vox_vals_mmp[roi_id]<181)) if hemi=='L' else (avg_vox_vals_mmp[roi_id]>180)   
+    last_roi = 180 if hemi=='L' else 361
+    sel_rois = ((avg_vox_vals_mmp[roi_id]>0) & (avg_vox_vals_mmp[roi_id]<last_roi+1)) if hemi=='L' else (avg_vox_vals_mmp[roi_id]>180)   
     avg_vox_vals_mmp = avg_vox_vals_mmp.loc[sel_rois]
     missing_rois = list(avg_vox_vals_mmp[roi_id].unique().astype(int))
     last_roi_missing=True if (missing_rois[-1]!=last_roi) else False
-    missing_rois = sorted(set(range(1, last_roi)) - set(missing_rois)) if hemi=='L' else sorted(set(range(181, last_roi)) - set(missing_rois))
-    if last_roi_missing: missing_rois+=[180]
+    missing_rois = sorted(set(range(1, last_roi+1)) - set(missing_rois)) if hemi=='L' else sorted(set(range(181, last_roi+1)) - set(missing_rois))
+    if last_roi_missing: missing_rois+=[last_roi]
     print('Missing ROIs: {}'.format(missing_rois))
     min_val = avg_vox_vals_mmp[sel_met].min()
     min_val = min_val-1 if min_val <0 else 0 #
@@ -106,10 +111,10 @@ def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad
     valid_ind = valid_data_index(x,y,n_mad=n_mad)
     test_r,test_p = stats.pearsonr(x[valid_ind], y[valid_ind])
     if test_p<p_uthr:
-        dist = distmat[valid_ind,:]
-        dist = dist[:,valid_ind]
         if (x_surr_corrs is None):
             if rnd_method=='smash':
+                dist = distmat[valid_ind,:]
+                dist = dist[:,valid_ind]
                 x_gen = Base(x[valid_ind], dist)  # note: can pass numpy arrays as well as filenames
                 x_surr_maps = x_gen(n=1000)           
             else:
@@ -249,3 +254,6 @@ def remove_outliers(x,mad_thr):
     x_med = np.nanmedian(x)
     valid_ind = ((x<(x_med+(mad_thr*x_mad))) & (x>(x_med-(mad_thr*x_mad))))
     return valid_ind
+
+def allometric_fit(x, b,c):
+    return  np.power(x,b) + c

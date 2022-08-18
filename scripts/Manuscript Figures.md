@@ -24,9 +24,11 @@ import os,glob,pickle,re,sys,json
 import pandas as pd
 import numpy as np
 from scipy import stats
+from scipy.optimize import curve_fit
 import seaborn as sns
 from nilearn import datasets, input_data
 import pingouin as pg
+import nibabel as nib
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
@@ -197,7 +199,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -535,11 +537,34 @@ apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
 for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
     if apes_diff_sign[ix]<0.055:
         sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
-        plt.gca().text(ix, plt.gca().get_ylim()[1]-0.1, sign_text, ha='center', va='bottom', color='r')
+        plt.gca().text(ix, plt.gca().get_ylim()[1]-0.1, sign_text, ha='center', va='bottom', color='r', size=24)
 
 ```
 
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] -->
+#### 3C. Allometric brain expansion
+
+```python
+chimp2human_expansion = []
+for _, h in enumerate(['lh', 'rh']):
+    chimp2human_expansion = np.append(chimp2human_expansion, nib.load(os.path.join(root_dir,'external',f'Wei2019/{h}.32k.chimp2humanF.smoothed15.shape.gii')).darrays[0].data)
+chimp2human_expansion = surface_to_parcel(chimp2human_expansion,'glasser_360_conte69')[1:]
+avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id')
+
+src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_allometric_ed-chimp2humanexpansion.png'),
+           l=5,u=95,n_mad='min',ylabel='Energy density\n[umol/(min*100g)]', xlabel='Brain expansion [a.u.]',p_uthr=1,plot=True,
+           cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=False,plot_surface=False,x_surr_corrs=cohorts_metadata['all']['smash_sd_{}-{}'.format(x_var,y_var)],
+          )
+
+valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
+allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
+plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
+print(allometric_fit_params)
+
+allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
+plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
+```
+
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### bin
 <!-- #endregion -->
 

@@ -1,4 +1,4 @@
-roi_id,degree,degree_z,cmrglc,signal_density,expansion,expansion_type,nvox_per_roi,h,z,module_id,module,nw,session,cohort
+roi_id,degree,degree_z,cmrglc,energy_density,expansion,expansion_type,nvox_per_roi,h,z,module_id,module,nw,session,cohort
 1,90.28638,0.19104545,30.976751,2.5697656,3.0962068997278682,0.0,108,0.8428736171907715,0.5464432672812168,1.0,VIS,Vis,AUF,TUM.b
 2,98.557625,0.54906297,25.23845,-2.961782,2.829132462201053,0.0,8,0.8421753784831444,-0.9652294442176964,1.0,VIS,Vis,AUF,TUM.b
 3,67.841095,-0.15692145,25.709648,-1.2885917,3.2703505545331715,0.0,14,0.6811376162421917,0.6804832121431885,1.0,VIS,Vis,AUF,TUM.b
