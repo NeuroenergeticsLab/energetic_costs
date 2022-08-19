@@ -257,3 +257,12 @@ def remove_outliers(x,mad_thr):
 
 def allometric_fit(x, b,c):
     return  np.power(x,b) + c
+
+def gx_gene_exp(genes_df,gene_list,n_reg,agg_func='nanmedian',z_score=False):
+    # data gotten using fetch_ahba function has been already normalized using scaled robust sigmoid (SRS) normalization 
+    if z_score:
+        mean_gene_exp = getattr(np,agg_func)(stats.zscore(genes_df[genes_df.columns.intersection(gene_list)][:n_reg], axis=1), axis=1)
+    else:
+        mean_gene_exp = getattr(np,agg_func)(genes_df[genes_df.columns.intersection(gene_list)][:n_reg], axis=1)
+    mean_gene_exp[np.isnan(mean_gene_exp)]=np.min(mean_gene_exp)-1 if np.min(mean_gene_exp)<0 else 0
+    return mean_gene_exp

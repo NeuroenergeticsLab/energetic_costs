@@ -1,0 +1,64 @@
+id	symbol	p_val|float	avg_logFC|float	p_val_adj|float	_hprdClass	_expr	_geneLists
+ADAM11	ADAM11	0.00000E+00	0.437922361405766	0	Metallo protease	BrainSpLMD|4185;Eurexp|euxassay_010451|brain, dorsal root ganglion, facial VII, glossopharyngeal IX, neural retina, trigeminal V, ventral grey horn, vestibulocochlear VIII, vibrissa	OMIM|155120
+ARNTL	ARNTL	0.00000E+00	0.400906473911199	0	Transcription factor	BrainSpLMD|406;Eurexp|euxassay_000108|haemolymphoid system, neural retina, pituitary, retina, spleen primordium, thalamus, thymus primordium;BrainSpMouseDev|11652	OMIM|602550
+ASPH	ASPH	0.00000E+00	0.430354436167058	0	Enzyme: Hydroxylase	BrainSpLMD|444	OMIM|600582;HPO|444|Abnormal facial shape, Autosomal recessive inheritance, Convex nasal ridge, Dental malocclusion, Downslanted palpebral fissures, Ectopia lentis, Iris atrophy, Large beaked nose, Prominent nose, Retrognathia
+C1orf115	C1orf115	0.00000E+00	0.420323614036419	0	Unclassified	BrainSpLMD|79762	
+CAMK1D	CAMK1D	0.00000E+00	0.62735642703905	0	Serine/threonine kinase	BrainSpLMD|57118	OMIM|607957
+CCDC186	CCDC186	0.00000E+00	0.402923329784322	0	Unclassified	BrainSpLMD|55088	
+CCDC3	CCDC3	0.00000E+00	0.556835544433835	0	Unclassified	BrainSpLMD|83643;Eurexp|euxassay_009735|epithelium, floor plate, floorplate, mantle layer, mesenchyme, naso-lacrimal duct, olfactory	
+CD53	CD53	0.00000E+00	0.42218788398827	0	T cell antigen receptor	BrainSpLMD|963;Eurexp|euxassay_008611|thymus primordium	OMIM|151525
+CENPC	CENPC	0.00000E+00	0.520096375929008	0	DNA binding protein	BrainSpLMD|1060	OMIM|117141
+CFAP221	CFAP221	0.00000E+00	0.563482953080564	0			
+CKMT1B	CKMT1B	0.00000E+00	0.662817690825277	0	Enzyme: Phosphotransferase	Eurexp|euxassay_018134|glossopharyngeal IX, olfactory, rectum, trigeminal V, vagus X, ventral grey horn, vestibulocochlear VIII	OMIM|123290
+CPNE9	CPNE9	0.00000E+00	0.671589945020193	0	Transport/cargo protein	BrainSpLMD|151835	
+DGKI	DGKI	0.00000E+00	0.437342241398705	0	Lipid Kinase	BrainSpLMD|9162;Eurexp|euxassay_010174|mantle layer, marginal layer	OMIM|604072
+EPHA3	EPHA3	0.00000E+00	0.500833022356922	0	Receptor tyrosine kinase	BrainSpLMD|2042;Eurexp|euxassay_018957|axial muscle, clavicle, cranial muscle, extrinsic ocular muscle, floorplate, head mesenchyme, incisor, lip, lung, mantle layer, marginal layer, mesenchyme, molar, naris, palatal shelf, pectoral girdle and thoracic body wall, skeletal muscle, tarsus, thymus primordium, tongue, ventricular layer, vibrissa, vomeronasal organ;BrainSpMouseDev|13615	OMIM|179611;COSMIC||lung cancer, CRC, melanoma
+FHL1	FHL1	0.00000E+00	0.611797704016783	0	Unclassified	BrainSpLMD|2273;Eurexp|euxassay_018418|bladder, brain, diaphragm, dorsal root ganglion, head mesenchyme, limb, penis, rectum, spinal cord, tongue, vertebral axis muscle system	OMIM|300163;HPO|2273|Adult onset, Areflexia, Arrhythmia, Back pain, Elevated serum creatine phosphokinase, Flexion contracture, Foot dorsiflexor weakness, Frequent falls, Hyperlordosis, Hypertrophic cardiomyopathy, Hyporeflexia, Increased variability in muscle fiber diameter, Kyphosis, Lower limb muscle weakness, Myofibrillar myopathy, Progressive, Proximal muscle weakness, Rapidly progressive, Respiratory insufficiency, Respiratory insufficiency due to muscle weakness, Rimmed vacuoles, Scapular winging, Scapuloperoneal myopathy, Scapuloperoneal weakness, Scoliosis, Short neck, Skeletal muscle atrophy, Spinal rigidity, Steppage gait, Waddling gait, X-linked dominant inheritance, X-linked inheritance, X-linked recessive inheritance
+GABRG1	GABRG1	0.00000E+00	0.93240270200189	0	Extracellular ligand gated channel	BrainSpLMD|2565;Eurexp|euxassay_008368|mantle layer;BrainSpMouseDev|14181	OMIM|137166
+GLS2	GLS2	0.00000E+00	0.441625377711272	0	Enzyme: Hydrolase	BrainSpLMD|27165;BrainSpMouseDev|84969	OMIM|606365
+HS3ST2	HS3ST2	0.00000E+00	0.560888391438756	0	Enzyme: Sulphotransferase	BrainSpLMD|9956;Eurexp|euxassay_012864|clavicle, dorsal root ganglion, facial VII, glossopharyngeal IX, incisor, mandible, mantle layer, neural retina, rib, submandibular gland primordium, trigeminal V, vagus X, ventral grey horn	OMIM|604056
+HTR1F	HTR1F	0.00000E+00	0.541061332371268	0	G protein coupled receptor	BrainSpLMD|3355;BrainSpMouseDev|15332	OMIM|182134
+KCNQ2	KCNQ2	0.00000E+00	0.446931754185532	0	Voltage gated channel	BrainSpLMD|3785	SFARI||Autism, 3 - Suggestive evidence;OMIM|602235;HPO|3785|Abnormality of the globus pallidus, Abnormality of vision, Apnea, Autosomal dominant inheritance, Cerebral edema, Choreoathetosis, Deeply set eye, Dysesthesia, Dyskinesia, Dystonia, EEG with burst suppression, Epileptic encephalopathy, Epileptic spasms, Facial erythema, Feeding difficulties, Focal clonic seizures, Generalized hypotonia, Generalized tonic seizures, Generalized tonic-clonic seizures, Global developmental delay, Heterogeneous, Hypertonia, Inability to walk, Infantile onset, Intellectual disability, Muscular hypotonia, Myoclonus, Myokymia, Neonatal onset, Pallor, Phenotypic variability, Poor gross motor coordination, Profound global developmental delay, Reduced consciousness/confusion, Seizures, Spastic tetraparesis
+KIAA0513	KIAA0513	0.00000E+00	0.408219106507195	0	Unclassified	BrainSpLMD|9764	OMIM|611675
+KIAA1549	KIAA1549	0.00000E+00	0.427591119259525	0	Unclassified	BrainSpLMD|57670;Eurexp|euxassay_013378|brain, cartilaginous ring, dorsal root ganglion, facial VII, glossopharyngeal IX, incisor, metanephros, molar, neural retina, spinal cord, trigeminal V, vagus X, vestibulocochlear VIII	OMIM|613344;COSMIC||pilocytic astrocytoma
+LINC00923	LINC00923	0.00000E+00	0.440139214766347	0			
+LINC02232	LINC02232	0.00000E+00	0.414591748730074	0			
+LMTK2	LMTK2	0.00000E+00	0.430729621475633	0	Dual specificity kinase	BrainSpLMD|22853;Eurexp|euxassay_018856|marginal layer, pancreas;BrainSpMouseDev|87332	OMIM|610989
+LOC101928307	LOC101928307	0.00000E+00	0.422915829699369	0			
+LPCAT4	LPCAT4	0.00000E+00	0.402270306681504	0	Enzyme: Acyltransferase	BrainSpLMD|254531	OMIM|612039
+MAGI2-AS3	MAGI2-AS3	0.00000E+00	0.450500155172745	0			
+MAGI3	MAGI3	0.00000E+00	0.616823220733562	0	Unclassified	BrainSpLMD|260425;Eurexp|euxassay_011395|axial skeleton, facial VII, femur, fibula, glossopharyngeal IX, left lung, olfactory, rib, right lung, tibia, trigeminal V, vagus X, vomeronasal organ	OMIM|615943
+MAN1A2	MAN1A2	0.00000E+00	0.612396921417153	0	Enzyme: Hydrolase	BrainSpLMD|10905	OMIM|604345
+MET	MET	0.00000E+00	0.720474003980671	0	Receptor tyrosine kinase	BrainSpLMD|4233;Eurexp|euxassay_017756|lip, olfactory;BrainSpMouseDev|17064	SFARI||Autism, 2 - Strong candidate;OMIM|164860;COSMIC||papillary renal, head-neck squamous cell, papillary renal;HPO|4233|Abdominal pain, Autosomal dominant inheritance, Autosomal recessive inheritance, Elevated alpha-fetoprotein, Epigastric pain, Fatigue, Hepatic fibrosis, Hepatic necrosis, Hepatocellular carcinoma, Hepatomegaly, Heterogeneous, Incomplete penetrance, Micronodular cirrhosis, Papillary renal cell carcinoma, Portal vein thrombosis, Somatic mutation, Subacute progressive viral hepatitis, Vomiting
+MIR4697HG	MIR4697HG	0.00000E+00	0.477887440641422	0		BrainSpLMD|283174	
+MNS1	MNS1	0.00000E+00	0.402242352713279	0	Structural protein	BrainSpLMD|55329	OMIM|610766
+MSC-AS1	MSC-AS1	0.00000E+00	0.609865738735818	0			
+MYCBP2	MYCBP2	0.00000E+00	0.443784376261537	0	Transcription regulatory protein	BrainSpLMD|23077;Eurexp|euxassay_009485|brain, cervical, cervico-thoracic, dorsal root ganglion, facial VII, glossopharyngeal IX, neural retina, spinal cord, thoracic, trigeminal V, vestibulocochlear VIII;BrainSpMouseDev|69854	OMIM|610392
+NPTX2	NPTX2	0.00000E+00	0.413085707459591	0	Secreted polypeptide	BrainSpLMD|4885	OMIM|600750
+PKD2L1	PKD2L1	0.00000E+00	0.536914942711475	0	Ion channel	BrainSpLMD|9033;Eurexp|euxassay_008065|intermediate grey horn, ventricular layer	OMIM|604532
+PTPN5	PTPN5	0.00000E+00	0.487199906443516	0	Tyrosine phosphatase	BrainSpLMD|84867;Eurexp|euxassay_009726|brain, dorsal root ganglion, facial VII, glossopharyngeal IX, neural retina, spinal cord, trigeminal V, vagus X, vestibulocochlear VIII	OMIM|176879
+RAPGEF2	RAPGEF2	0.00000E+00	0.478799415363293	0	Guanine nucleotide exchange factor	BrainSpLMD|9693;Eurexp|euxassay_014449|olfactory	OMIM|609530
+RARB	RARB	0.00000E+00	0.81378679743376	0	Nuclear receptor	BrainSpLMD|5915;Eurexp|euxassay_000777|bladder, calyces, dorsal grey horn, foregut-midgut junction, hindgut, incisor, limb, mantle layer, midgut, molar, nasal capsule, oesophagus, olfactory, stomach, urethra;BrainSpMouseDev|85409	OMIM|180220;HPO|5915|Anophthalmia, Autosomal dominant inheritance, Autosomal recessive inheritance, Bicornuate uterus, Broad nasal tip, Congenital diaphragmatic hernia, Micrognathia, Microphthalmia, Pulmonary hypoplasia, Retrognathia, Wide nasal bridge
+RFTN1	RFTN1	0.00000E+00	0.403566285091178	0	Integral membrane protein	BrainSpLMD|23180;Eurexp|euxassay_004681|dorsal grey horn, mantle layer, marginal layer	
+RHOBTB2	RHOBTB2	0.00000E+00	0.787687898619335	0	GTPase	BrainSpLMD|23221	OMIM|607352
+SCHLAP1	SCHLAP1	0.00000E+00	0.824017555907771	0			OMIM|615568
+SEPT7P2	SEPT7P2	0.00000E+00	0.431669450153864	0			OMIM|611563
+SESN3	SESN3	0.00000E+00	0.52701823841197	0	Cell cycle control protein	BrainSpLMD|143686	OMIM|607768
+SIRPA	SIRPA	0.00000E+00	0.412586812508383	0	Cell surface receptor	BrainSpLMD|140885;Eurexp|euxassay_013621|embryo, floor plate, floorplate, mantle layer, marginal layer	OMIM|602461;COSMIC||HNSCC, colorectal cancer, Lung SCC
+SLC17A6	SLC17A6	0.00000E+00	0.447295885965836	0	Membrane transport protein	BrainSpLMD|57084;Eurexp|euxassay_004371|dorsal root ganglion, facial VII, glossopharyngeal IX, mantle layer, marginal layer, mesenchyme, neural retina, olfactory, spinal cord, stroma, trigeminal V, vagus X, vestibulocochlear VIII;BrainSpMouseDev|80230	OMIM|607563
+SLC20A1	SLC20A1	0.00000E+00	0.430925717438528	0	Membrane transport protein	BrainSpLMD|6574;Eurexp|euxassay_009182|brain, cervical, cervico-thoracic, cortex, dorsal root ganglion, facial VII, glomeruli, glossopharyngeal IX, liver, marginal layer, metanephros, midgut, primitive seminiferous tubules, spinal cord, submandibular gland primordium, thoracic, trigeminal V, vagus X	OMIM|137570
+SLC22A10	SLC22A10	0.00000E+00	1.14096131235119	0	Transport/cargo protein	BrainSpLMD|387775	OMIM|607580
+SLC22A9	SLC22A9	0.00000E+00	0.419071060680179	0	Membrane transport protein	BrainSpLMD|114571	SFARI||Autism, 4 - Minimal evidence;OMIM|607579
+SLC6A7	SLC6A7	0.00000E+00	0.483176381792222	0	Membrane transport protein	BrainSpLMD|6534;Eurexp|euxassay_012672|mantle layer	OMIM|606205
+SPATS2L	SPATS2L	0.00000E+00	0.512470761243896	0	Unclassified	BrainSpLMD|26010;Eurexp|euxassay_013635|bladder, exoccipital bone, mantle layer, mesenchyme, oesophagus, orbito-sphenoid, penis, pharyngo-tympanic tube, tongue, turbinate, vertebral axis muscle system, vibrissa	OMIM|613817
+SPEF2	SPEF2	0.00000E+00	0.413977617981626	0	Unclassified	BrainSpLMD|79925	OMIM|610172
+SPTSSB	SPTSSB	0.00000E+00	0.419965215203852	0	Unclassified	BrainSpLMD|165679	OMIM|610412
+ST6GAL2	ST6GAL2	0.00000E+00	0.523732260626596	0	Enzyme: Sialyltransferase	BrainSpLMD|84620	OMIM|608472
+STAMBPL1	STAMBPL1	0.00000E+00	0.519695585601143	0	Adapter molecule	BrainSpLMD|57559;Eurexp|euxassay_002893|basal plate, dorsal root ganglion, facial VII, foregut-midgut junction, glossopharyngeal IX, hindgut, incisor, limb, mantle layer, mesenchyme, midgut, stomach, submandibular gland primordium, trigeminal V, vagus X, ventral grey horn	OMIM|612352
+TBRG1	TBRG1	0.00000E+00	0.436573538275014	0	DNA binding protein	BrainSpLMD|84897;Eurexp|euxassay_001972|Meckel's cartilage, basisphenoid bone, frontal bone primordium, incisor, molar, orbito-sphenoid, turbinate	OMIM|610614
+TNNT2	TNNT2	0.00000E+00	0.689976493276829	0	Structural protein	BrainSpLMD|7139;Eurexp|euxassay_000294|cardiac muscle, mesenchyme, tongue, ventricle, vertebral axis muscle system	OMIM|191045;HPO|7139|Autosomal dominant inheritance, Cardiomyopathy, Congestive heart failure, Dilated cardiomyopathy, Hypertrophic cardiomyopathy, Sudden death
+TOLLIP	TOLLIP	0.00000E+00	0.440198551628126	0	Adapter molecule	BrainSpLMD|54472	OMIM|606277
+TPBG	TPBG	0.00000E+00	0.780526284276031	0	Integral membrane protein	BrainSpLMD|7162;Eurexp|euxassay_000218|cortex, drainage component, floorplate, fundus region, lateral wall, mantle layer, pelvis, pineal primordium, roof plate, thalamus, ureter, ventricular layer	OMIM|190920
+TSHZ2	TSHZ2	0.00000E+00	1.33645678884582	0	Unclassified	BrainSpLMD|128553;BrainSpMouseDev|86813	OMIM|614118
+TSHZ3	TSHZ3	0.00000E+00	0.637856680078065	0	DNA binding protein	BrainSpLMD|57616;Eurexp|euxassay_005648|dorsal root ganglion	SFARI||Autism, 4 - Minimal evidence;OMIM|614119
+VPS41	VPS41	0.00000E+00	0.452764463771574	0	Transport/cargo protein	BrainSpLMD|27072	OMIM|605485

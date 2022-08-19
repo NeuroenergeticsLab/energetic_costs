@@ -32,6 +32,7 @@ import nibabel as nib
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
+from enigmatoolbox.datasets import fetch_ahba
 
 #BrainSmash
 from brainsmash.mapgen.base import Base 
@@ -199,7 +200,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -351,7 +352,7 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot_index += 4
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
 <!-- #endregion -->
@@ -481,7 +482,7 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 
 ```
 
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 3. Energy density distribution relates to human cognitive functions and cortical evolution
 #### 3A. Cognitive functions
 <!-- #endregion -->
@@ -616,7 +617,7 @@ plt.gca().set(xlabel='staining\nintensity')
 
 ```
 
-#### 4B. Relationship with cell density in infragranular layers 
+#### 4B. Energy density relationship with cell density in infragranular layers 
 
 ```python
 src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig4B_bb-skew_vs_ed.png'),
@@ -627,6 +628,49 @@ plt.gca().scatter(bbl_roi_skew[[lskew,hskew]],avg_roi_ed_vals[[lskew,hskew]],s=3
                   c=np.concatenate((getattr(plt.cm,'magma')(range(256))[24][np.newaxis,:],getattr(plt.cm,'magma')(range(256))[231][np.newaxis,:]),axis=0))
 #plt.figure()
 #plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(img_dir,'bb_skew'),colorbar=True,cmap='magma',fig_title='BB skewness',vlow=5,vhigh=95)
+```
+
+#### 4C. Energy density relationship with transcription levels for signaling
+
+```python
+ahba_gene_expression = fetch_ahba(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv'))
+stab_genesets = ['STAB_excitatory','STAB_interneuron','STAB_astrocytes','STAB_olygodendrocytes']
+stab_geneset_clusters = {}
+stab_geneset_clusters['STAB_excitatory'] = ['ExN1_4','ExN1a','ExN1b','ExN1c','ExN2','ExN3','ExN4','ExN5','ExN6a','ExN6b','ExN8','ExN9','ExN10','ExN11']
+stab_geneset_clusters['STAB_interneuron'] = ['InN1a','InN1b','InN3','InN4a','InN4b','InN4_5','InN5','InN5_6','InN6','InN7_8']
+stab_geneset_clusters['STAB_astrocytes'] = ['Astro1','Astro2','Astro3','Astro4']
+stab_geneset_clusters['STAB_olygodendrocytes'] = ['Olig1','Olig3','Olig4','NPC']
+stab_gene_expression_df = pd.DataFrame({})
+for geneset in stab_genesets:
+    stab_genesets_clusters_gene_ids = []
+    for geneset_cluster in stab_geneset_clusters[geneset]:
+        stab_genesets_clusters_gene_ids += pd.read_csv(os.path.join(root_dir,'external','STAB2021',f'{geneset_cluster}.tsv'),sep='\t')['symbol'].to_list()
+    stab_gene_expression_df = pd.concat([stab_gene_expression_df,
+                                         pd.DataFrame({'energy_density':avg_roi_ed_vals,
+                                                       'gene_expression':src.functions.gx_gene_exp(ahba_gene_expression,stab_genesets_clusters_gene_ids,mmp_n,agg_func='nanmean')[:180],
+                                                       'type':geneset})],
+                                        ignore_index=True)
+                
+stab_gene_expression_df = stab_gene_expression_df[(stab_gene_expression_df.energy_density>stab_gene_expression_df.energy_density.min()) & (stab_gene_expression_df.gene_expression>stab_gene_expression_df.gene_expression.min())]        
+    
+stab_filter_labels = ['STAB_excitatory','STAB_interneuron']
+stab_palette_regplot = [sns.color_palette()[1],sns.color_palette()[4]]
+xlab='gene_expression'
+ylab='energy_density'
+stab_filtered_index_lists=[]
+for stab_filt in stab_filter_labels:
+    stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
+src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],xlabel=xlab,
+                  ylabel='energy density[umol/(min*100g)]',xlim=(0.45,0.65),ylim=(-8,8),s=10)
+plt.figure()
+stab_filter_labels = ['STAB_astrocytes','STAB_olygodendrocytes']
+stab_palette_regplot = [(0.5,0.5,0.5,0.5),(0.4,0.4,0.4,1)]
+stab_filtered_index_lists=[]
+for stab_filt in stab_filter_labels:
+    stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
+src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],xlabel=xlab,
+                  ylabel='energy density[umol/(min*100g)]',xlim=(0.35,0.60),ylim=(-8,8),s=10)
+
 ```
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
