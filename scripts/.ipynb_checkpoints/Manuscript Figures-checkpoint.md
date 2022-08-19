@@ -17,6 +17,7 @@ jupyter:
 from matplotlib import pyplot as plt
 %matplotlib inline
 from matplotlib.colors import ListedColormap
+from matplotlib import colorbar
 import warnings
 warnings.filterwarnings('ignore')
 warnings.simplefilter('ignore')
@@ -566,7 +567,7 @@ allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
-<!-- #region tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 4. Layer specific cellular organization of energy dense regions
 #### 4A. Histological cell density across cortical layers 
 <!-- #endregion -->
@@ -720,6 +721,84 @@ sns.heatmap(gene_exp_null_corr[:,np.newaxis],cbar=False, xticklabels=False,ytick
 #plot_surf(ed_180rois,os.path.join(img_dir,'avg_sign_density_4coh'),colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95)
 
 
+```
+
+#### 5B. Gene ontology (GO): cellular components
+
+```python
+go_cell_comps = pd.read_csv(os.path.join(root_dir,'CompEnrichment_SD_AHBA_fdr0005_all_bgGTEx_Allsign.txt'),sep='\t')
+go_cell_comps = go_cell_comps.sort_values(by='Enrichment',ignore_index=True) # Highest enrichment goes on the top
+go_cell_comps['-log10(p_FDR)'] = -np.log10(go_cell_comps['FDR q-value'])
+
+cix = 17
+clrs_bar = []
+for ix in range(go_cell_comps.shape[0]):
+    clrs_bar+=[extended_cm[cix]]
+    cix=cix+16 if cix!=81 else cix+16*6  
+fig, ax = plt.subplots(figsize=(0.25,5))
+cb = colorbar.ColorbarBase(ax, cmap=ListedColormap(clrs_bar), orientation = 'vertical',ticks=np.arange(0.05,1,0.1))
+go_cell_comps_tickl = go_cell_comps.Description.to_list()
+cb.ax.set_yticklabels(go_cell_comps_tickl) 
+for yix,ytickl in enumerate(cb.ax.get_yticklabels()):
+    ytickl.set_color(clrs_bar[yix])
+    ytickl.set_fontsize(10+yix+1)
+cb.ax.text(-1.5, 0.05, go_cell_comps.loc[0,"Enrichment"],color=clrs_bar[0], transform=cb.ax.transAxes, va='top', ha='center')
+cb.ax.text(-1.5, 0.95, go_cell_comps.loc[go_cell_comps.shape[0]-1,"Enrichment"],color=clrs_bar[-1], transform=cb.ax.transAxes, va='bottom', ha='center')
+cb.ax.set_title( r'$\bf{Enrichment}$ Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
+
+```
+
+```python
+
+```
+
+```python
+go_genes = pd.read_excel(os.path.join(root_dir,'SD_AHBA_fdr0005_GTExbrainBG_GO_significant_genes.xlsx'),engine='openpyxl',usecols='A:I',nrows=70)
+go_genes_summary = go_genes.groupby(['gene_type','gene_type_subcategory'],as_index=False).count()#['gene']
+total_genes = go_genes_summary.gene.sum()
+go_genes_pie_data = np.concatenate((go_genes_summary.loc[(go_genes_summary.gene_type=='neurotransmission'),['gene_type_subcategory','gene']].sort_values(by='gene').gene.to_numpy()[np.newaxis,:],
+                                     np.array(go_genes_summary.loc[(go_genes_summary.gene_type=='cellular signaling'),['gene_type_subcategory','gene']].sort_values(by='gene').gene.to_list()+[0,0])[np.newaxis,:],
+                                     np.array(go_genes_summary.loc[(go_genes_summary.gene_type=='others'),['gene_type_subcategory','gene']].sort_values(by='gene').gene.to_list()+[0,0,0])[np.newaxis,:]
+                                    ),axis=0)
+
+go_genes_pie_data = np.round(100*go_genes_pie_data/total_genes)
+go_genes_pie_labels = go_genes_summary.loc[(go_genes_summary.gene_type=='neurotransmission'),['gene_type_subcategory','gene']].sort_values(by='gene').gene_type_subcategory.to_list()
+go_genes_pie_labels[1] = go_genes_pie_labels[0] #only valid because both categories have the same value
+go_genes_pie_labels[0] = '' #others
+## to make narrow the plot
+go_genes_pie_labels[1] = 'ligang-gated\nreceptor'
+go_genes_pie_labels[2] = 'voltage gated\nion channels'
+go_genes_pie_labels[3] = 'G-protein\ncoupled receptor'
+go_genes_pie_labels += go_genes_summary.loc[(gor_genes_summary.gene_type=='cellular signaling'),['gene_type_subcategory','gene']].sort_values(by='gene').gene_type_subcategory.to_list()
+go_genes_pie_labels[4] = '' #G protein duplicated
+go_genes_pie_labels += ['','','','','','']
+
+fig, ax = plt.subplots(figsize=(5,5))
+wd0,t0 = ax.pie(gor_genes_pie_data.flatten(), radius=1,
+    #list(gor_genes_pie_data.flatten()[:3])+[gor_genes_pie_data[0,3]+gor_genes_pie_data[1,0]]+list(gor_genes_pie_data.flatten()[5:]), radius=1, 
+                colors=np.concatenate((np.array(list(plt.cm.tab20c(range(20))[7][:3])+[0.5])[np.newaxis,:],plt.cm.tab20c(range(20))[np.arange(7,5,-1)],
+                                       np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.8])[np.newaxis,:],np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.8])[np.newaxis,:],
+                                       plt.cm.tab20c(range(20))[14:16],np.concatenate((plt.cm.tab20c(range(20))[15][:3],[0.5]))[np.newaxis,:],
+                                       np.repeat(np.array([plt.cm.tab20c(range(20))[16]]),4,axis=0)),axis=0),
+                labels=gor_genes_pie_labels,wedgeprops=dict(width=0.3, edgecolor='w'),labeldistance=1.1)#,textprops={'ha':'right'}
+                #labels=gor_genes_pie_labels[:4]+gor_genes_pie_labels[5:]
+                #for distiniguishing between G-protein subcategories
+                #gor_genes_pie_data.flatten(),
+                #colors=np.concatenate((np.array(list(plt.cm.tab20c(range(20))[7][:3])+[0.5])[np.newaxis,:],plt.cm.tab20c(range(20))[np.arange(7,4,-1)],
+                #                       plt.cm.tab20c(range(20))[13:16],np.concatenate((plt.cm.tab20c(range(20))[15][:3],[0.5]))[np.newaxis,:],
+                #                       np.repeat(np.array([plt.cm.tab20c(range(20))[16]]),4,axis=0)),axis=0),
+                #labels=gor_genes_pie_labels,
+                
+#t0[3].set_color(plt.cm.Set2(range(8))[3])
+wd,_,_ =ax.pie(gor_genes_pie_data.sum(axis=1), radius=0.7, colors=plt.cm.tab20c(range(20))[[4,12,16]],
+       wedgeprops=dict(width=0.3, edgecolor='w'),autopct='%d%%',textprops=dict(color="w"),pctdistance=0.75)
+wd1,_ =ax.pie(np.array([np.sum(gor_genes_pie_data[:2]),np.sum(gor_genes_pie_data[-1])]), radius=0.4, colors=plt.cm.tab20c(range(20))[[8,16]],
+       wedgeprops=dict(width=0.3, edgecolor='w'))
+#wd2,_ =ax.pie(np.array([np.sum(gor_genes_pie_data[0,:-1]),gor_genes_pie_data[0,-1]+gor_genes_pie_data[1,0],gor_genes_pie_data[1,1],gor_genes_pie_data[2,0]]),
+#                radius=1, colors=['w',plt.cm.Dark2(range(8))[3],'w'],wedgeprops=dict(width=0.025))
+ax.set(aspect="equal")
+ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular signaling','others'],
+          loc='lower left', ncol=2, bbox_to_anchor=(-0.4, -0.225))
 ```
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->

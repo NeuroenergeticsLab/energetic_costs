@@ -17,6 +17,7 @@ jupyter:
 from matplotlib import pyplot as plt
 %matplotlib inline
 from matplotlib.colors import ListedColormap
+from matplotlib import colorbar
 import warnings
 warnings.filterwarnings('ignore')
 warnings.simplefilter('ignore')
@@ -566,7 +567,7 @@ allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
-<!-- #region tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 4. Layer specific cellular organization of energy dense regions
 #### 4A. Histological cell density across cortical layers 
 <!-- #endregion -->
