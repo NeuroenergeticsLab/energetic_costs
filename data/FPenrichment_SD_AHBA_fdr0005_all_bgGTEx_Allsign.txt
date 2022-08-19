@@ -1,0 +1,8 @@
+GO term	Description	P-value	FDR q-value	Enrichment	N	B	n	Number of genes
+GO:0004930	G protein-coupled receptor activity	8.2E-6	1.62E-2	2.22	1734	28	585	21
+GO:0004888	transmembrane signaling receptor activity	1.08E-5	1.06E-2	1.80	1734	61	585	37
+GO:0022843	voltage-gated cation channel activity	1.98E-5	1.3E-2	2.47	1734	18	585	15
+GO:0038023	signaling receptor activity	2.77E-5	1.37E-2	1.68	1734	74	585	42
+GO:0001664	G protein-coupled receptor binding	3.83E-5	1.51E-2	2.22	1734	24	585	18
+GO:0060089	molecular transducer activity	1.29E-4	4.26E-2	1.59	1734	80	585	43
+GO:0005244	voltage-gated ion channel activity	1.96E-4	4.84E-2	2.16	1734	22	585	16

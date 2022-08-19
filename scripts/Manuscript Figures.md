@@ -18,6 +18,9 @@ from matplotlib import pyplot as plt
 %matplotlib inline
 from matplotlib.colors import ListedColormap
 from matplotlib import colorbar
+import matplotlib.colors as clrs
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+
 import warnings
 warnings.filterwarnings('ignore')
 warnings.simplefilter('ignore')
@@ -748,9 +751,41 @@ cb.ax.set_title( r'$\bf{Enrichment}$ Gene ontology - cellular component',fontdic
 
 ```
 
-```python
+#### 5C. GO: molecular functions
 
+```python
+go_mol_funcs = pd.read_csv(os.path.join(root_dir,'FPenrichment_SD_AHBA_fdr0005_all_bgGTEx_Allsign.txt'),sep='\t')
+go_mol_funcs['-log10(adjusted p-value)'] = -np.log10(go_mol_funcs['FDR q-value'])
+go_mol_funcs = go_mol_funcs.sort_values(by='FDR q-value',ignore_index=True,ascending=False)
+go_mol_funcs['id']=go_mol_funcs.index+1
+go_mol_funcs_sort_order={6:1,1:2,4:3,3:4,7:5,5:6,2:7}
+go_mol_funcs['sorted_id'] = go_mol_funcs['id'].map(go_mol_funcs_sort_order)
+go_mol_funcs.loc[go_mol_funcs.Description=='molecular transducer activity','Description'] = r'$\bf{receptor\ activity}$'+'\nmolecular transducer activity'
+go_mol_funcs.loc[go_mol_funcs.Description=='voltage-gated ion channel activity','Description'] = r'$\bf{transporter\ activity}$'+'\nvoltage-gated ion channel activity'
+go_mol_funcs = go_mol_funcs.sort_values(by='sorted_id',ignore_index=True,ascending=False)
+g = sns.relplot(data=go_mol_funcs, x="-log10(adjusted p-value)", y="sorted_id", hue="Enrichment",size="Number of genes",palette=ListedColormap(extended_cm[20:236]),sizes=(150,400))
+plt.gca().set_yticks(go_mol_funcs.sorted_id.to_list())
+plt.gca().set_yticklabels(go_mol_funcs.Description.to_list())
+[s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['left'], plt.gca().spines['right']]]
+plt.gca().xaxis.grid(False)
+plt.gca().set_ylabel('GO term')
+plt.gca().set_title('Gene ontology - molecular function')
+orig_leg = plt.gca().get_legend_handles_labels()
+g._legend.remove()
+leg = plt.legend(orig_leg[0][8:],orig_leg[1][8:],bbox_to_anchor=(1,1.05), loc="upper left", frameon=False,title=orig_leg[1][7],title_fontsize=14)
+leg._legend_box.align = "left"
+axins = inset_axes(g.ax,
+                   width="3%",  # width = 3% of parent_bbox width
+                   height="25%",
+                   loc='lower left',
+                   bbox_to_anchor=(1.05, 0.05, 1.05, 1.05),
+                   bbox_transform=g.ax.transAxes
+                   )
+cbar = g.fig.colorbar(plt.cm.ScalarMappable(norm=clrs.Normalize(vmin=go_mol_funcs['Enrichment'].min(), vmax=go_mol_funcs['Enrichment'].max(), clip=False), cmap=ListedColormap(extended_cm[20:236])),cax=axins)
+axins.set_title(orig_leg[1][0],fontsize=14,loc='left')
 ```
+
+
 
 ```python
 go_genes = pd.read_excel(os.path.join(root_dir,'SD_AHBA_fdr0005_GTExbrainBG_GO_significant_genes.xlsx'),engine='openpyxl',usecols='A:I',nrows=70)
