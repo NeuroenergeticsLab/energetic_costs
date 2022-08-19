@@ -1,0 +1,11 @@
+GO term	Description	P-value	FDR q-value	Enrichment	Color
+GO:0044459	plasma membrane part	2.33E-8	2.52E-5	1.44	#6E7E85
+GO:0031226	intrinsic component of plasma membrane	4.08E-8	2.2E-5	1.66	#6E7E85
+GO:0005887	integral component of plasma membrane	1.38E-7	4.96E-5	1.67	#6E7E85
+GO:0044456	synapse part	9.55E-7	2.57E-4	1.70	#387780
+GO:0098590	plasma membrane region	8.31E-6	1.79E-3	1.59	#6E7E85
+GO:0043005	neuron projection	2.02E-5	3.63E-3	1.56	#753742
+GO:0097458	neuron part	2.03E-5	3.12E-3	1.42	#753742
+GO:0030425	dendrite	7.56E-5	1.02E-2	1.86	#753742
+GO:0005886	plasma membrane	7.96E-5	9.54E-3	1.24	#6E7E85
+GO:0045202	synapse	2.08E-4	2.24E-2	1.55	#387780
