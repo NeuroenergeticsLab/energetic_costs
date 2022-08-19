@@ -107,6 +107,13 @@ def valid_data_index(x,y,n_mad=2):
         valid_ind = ((x>np.nanmin(x)) & (y>np.nanmin(y)))
     return valid_ind
 
+def corr_wo_outliers(x,y,n_mad=2):
+    if not isinstance(n_mad, str):
+        valid_ind = valid_data_index(x,y,n_mad=n_mad)
+    else:
+        valid_ind = ((x>np.nanmin(x)) & (y>np.nanmin(y)))    
+    return stats.pearsonr(x[valid_ind], y[valid_ind])
+
 def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad=2,rnd_method='smash',l=5,u=95,p_uthr=0.06,colorbar=True,xlim=None,ylim=None,p_xlim=[-0.5,0.5],plot=True,print_text=False,plot_rnd=True,plot_surface=True,x_surr_corrs=None):
     valid_ind = valid_data_index(x,y,n_mad=n_mad)
     test_r,test_p = stats.pearsonr(x[valid_ind], y[valid_ind])

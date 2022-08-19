@@ -566,8 +566,10 @@ allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
+<!-- #region tags=[] -->
 ### Figure 4. Layer specific cellular organization of energy dense regions
 #### 4A. Histological cell density across cortical layers 
+<!-- #endregion -->
 
 ```python
 ## Ultra-high resolution histological slice from the BigBrain atlas
@@ -660,16 +662,63 @@ ylab='energy_density'
 stab_filtered_index_lists=[]
 for stab_filt in stab_filter_labels:
     stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
-src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],xlabel=xlab,
-                  ylabel='energy density[umol/(min*100g)]',xlim=(0.45,0.65),ylim=(-8,8),s=10)
+src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],
+                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.45,0.65),ylim=(-8,8),s=10)
 plt.figure()
 stab_filter_labels = ['STAB_astrocytes','STAB_olygodendrocytes']
 stab_palette_regplot = [(0.5,0.5,0.5,0.5),(0.4,0.4,0.4,1)]
 stab_filtered_index_lists=[]
 for stab_filt in stab_filter_labels:
     stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
-src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],xlabel=xlab,
-                  ylabel='energy density[umol/(min*100g)]',xlim=(0.35,0.60),ylim=(-8,8),s=10)
+src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],
+                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.35,0.60),ylim=(-8,8),s=10)
+
+```
+
+### Figure 5. Higher rate of neuromodulation in energy dense regions
+#### 5A. Significant correlations between energy density and gene expression of brain specific genes
+
+```python
+corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
+for gen in ahba_gene_expression.columns[1:]:
+    gene_expression = ahba_gene_expression[gen].to_numpy()[:180]
+    gene_expression[np.isnan(gene_expression)]=np.min(gene_expression)-1 if np.min(gene_expression)<0 else 0
+    r_ed_gexp_p, p_ed_gexp_p = src.functions.corr_wo_outliers(avg_roi_ed_vals,gene_expression,n_mad=3.5)
+    corr_ed_gexp = corr_ed_gexp.append({'gene':gen,'r':r_ed_gexp_p,'p':p_ed_gexp_p}, ignore_index=True)
+
+_,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.float32),method='fdr_bh')
+
+plt.figure(figsize=(6,2.5))
+sns.histplot(data=corr_ed_gexp, x="r",color=(0.6,0.6,0.6))
+## Statsitical significance thresholds
+plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r<0)].r.max(), 0, 1, color='k', linestyle='dashed', lw=1)
+plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)].r.min(), 0, 1, color='k', linestyle='dashed', lw=1)
+
+hist_data = np.histogram_bin_edges(corr_ed_gexp.r.to_numpy(), bins=len(plt.gca().patches))
+sel_genes_colors = [plt.cm.Dark2(range(8))[3].flatten(),plt.cm.Dark2(range(8))[3].flatten(),plt.cm.tab20c([4]).flatten()]
+genes_with_pet_available = np.array(['OPRM1','HTR4','CHRNA4']) # derived from figure 5E, buzt used here to don't duplicate the histogram there
+for cix,sel_gene in enumerate(genes_with_pet_available):
+    patch_index = (np.abs((hist_data-corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.gene==sel_gene)].r.item()))).argmin()
+    plt.gca().patches[patch_index].set_facecolor(sel_genes_colors[cix])
+patch_index = (np.abs((hist_data-0))).argmin() #0 correlation gene
+plt.gca().patches[patch_index].set_facecolor('gray')
+[s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['right']]]
+plt.gca().xaxis.grid(False)
+plt.gca().yaxis.grid(False)
+plt.gca().set_xlabel('Pearson correlation')
+
+gene_exp_null_corr = ahba_gene_expression[corr_ed_gexp[(corr_ed_gexp.r>0) & (corr_ed_gexp.r<=0.000011)].gene.item()].to_numpy()[:180] # gen non-correlated with the energy density chosen arbitrary
+gene_exp_null_corr[np.isnan(gene_exp_null_corr)]=np.min(gene_exp_null_corr)-1 if np.min(gene_exp_null_corr)<0 else 0
+plt.figure(figsize=(0.5,3))
+sns.heatmap(avg_roi_ed_vals[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
+plt.figure(figsize=(0.5,3))
+sns.heatmap(gene_exp_null_corr[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
+
+#plt.figure()
+#plot_surf(gene_exp_null_corr,os.path.join(img_dir,corr_ed_gen[(corr_ed_gen.r>0) & (corr_ed_gen.r<=0.000011)].gene.item()),colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95)#
+#plt.figure()
+#plot_surf(ed_180rois,os.path.join(img_dir,'avg_sign_density_4coh'),colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95)
+
 
 ```
 
