@@ -877,15 +877,15 @@ ext_pet_roi_maps = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Ha
 #### 5F. Energy density variance explained by external receptor-PET density-maps
 
 ```python
-#ext_pet_roi_maps_mat = stats.zscore(ext_pet_roi_maps.to_numpy()[:,1:], axis=0)
-#ext_pet_labels = ext_pet_roi_maps.columns[1:].to_list()
-#all_ind_roi_ed_vals = all_ind_roi_vals.groupby(['sid','roi_id'],as_index=False).median()[['sid','roi_id','energy_density']].pivot(index='roi_id',columns='sid', values='energy_density').reset_index()
-#all_ind_roi_ed_vals = all_ind_roi_ed_vals[all_ind_roi_ed_vals.roi_id.isin(ext_pet_roi_maps.roi_id.unique())]
-#all_ind_roi_ed_vals_mat= stats.zscore(all_ind_roi_ed_vals.to_numpy(), axis=0,nan_policy='omit')[:,1:]
-#all_ind_roi_ed_vals_mat = np.nan_to_num(all_ind_roi_ed_vals_mat)
-#
-##PLS
-#ed_ext_pet_roi_pls = pyls.behavioral_pls(all_ind_roi_ed_vals_mat,ext_pet_roi_maps_mat,n_perm=1000,n_boot=1000,n_proc=6)
+ext_pet_roi_maps_mat = stats.zscore(ext_pet_roi_maps.to_numpy()[:,1:], axis=0)
+ext_pet_labels = ext_pet_roi_maps.columns[1:].to_list()
+all_ind_roi_ed_vals = all_ind_roi_vals.groupby(['sid','roi_id'],as_index=False).median()[['sid','roi_id','energy_density']].pivot(index='roi_id',columns='sid', values='energy_density').reset_index()
+all_ind_roi_ed_vals = all_ind_roi_ed_vals[all_ind_roi_ed_vals.roi_id.isin(ext_pet_roi_maps.roi_id.unique())]
+all_ind_roi_ed_vals_mat= stats.zscore(all_ind_roi_ed_vals.to_numpy(), axis=0,nan_policy='omit')[:,1:]
+all_ind_roi_ed_vals_mat = np.nan_to_num(all_ind_roi_ed_vals_mat)
+
+#PLS
+ed_ext_pet_roi_pls = pyls.behavioral_pls(all_ind_roi_ed_vals_mat,ext_pet_roi_maps_mat,n_perm=1000,n_boot=1000,n_proc=6)
 n_sign_comp = (ed_ext_pet_roi_pls.permres.pvals<=0.05).sum()
 print(ed_ext_pet_roi_pls.varexp[:n_sign_comp])
 print(ed_ext_pet_roi_pls.permres.pvals[:n_sign_comp])
@@ -907,10 +907,10 @@ axs.barh(np.arange(len(err)), np.sort(ed_ext_pet_roi_pls["y_loadings"][:, icx]),
 axs.set_yticks(np.arange(ext_pet_roi_maps.shape[1]-1))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
 axs.set_yticklabels(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
 for patch in  [i for (i, v) in zip(axs.patches, np.isin(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx],['A4B2','MU','5HT4'])) if v]:
-    patch.set_edgecolor('k')
-axs.patches[np.where((np.array(ext_pet_labels)=='mGluR5')[sorted_idx])[0][0]].set_edgecolor(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])
-axs.patches[np.where((np.array(ext_pet_labels)=='GABAa-bz')[sorted_idx])[0][0]].set_edgecolor(plt.cm.tab20c([6]).flatten())
-axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set_edgecolor(plt.cm.tab20c([6]).flatten())            
+    patch.set(edgecolor='k',linewidth=1.5)
+axs.patches[np.where((np.array(ext_pet_labels)=='mGluR5')[sorted_idx])[0][0]].set(edgecolor=list(plt.cm.Dark2(range(8))[3][:3])+[0.7],linewidth=2)
+axs.patches[np.where((np.array(ext_pet_labels)=='GABAa-bz')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)
+axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)            
         
 #plt.figure()
 #plot_surf(metric2mmp(pd.DataFrame({'roi_id':valid_roi_ids,'ed_score':ed_ext_pet_roi_pls.x_scores[:,icx]}),'ed_score','roi_id'),
