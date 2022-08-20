@@ -30,9 +30,11 @@ import numpy as np
 from scipy import stats
 from scipy.optimize import curve_fit
 import seaborn as sns
+import joypy
 from nilearn import datasets, input_data
 import pingouin as pg
 import nibabel as nib
+import pls
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
@@ -204,7 +206,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -356,7 +358,7 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot_index += 4
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
 <!-- #endregion -->
@@ -492,7 +494,6 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 <!-- #endregion -->
 
 ```python
-import joypy
 neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-masked_ed-median_cohorts-all_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}_v1.0.csv'))
 neurosynth_order = neurosynth_masks_df[neurosynth_masks_df.energy_density!=0.0].groupby('domain', as_index=False).median().sort_values(by='energy_density',ignore_index=True)
 neurosynth_order['sorted_domain'] = neurosynth_order.index.astype(str).str.zfill(2)+'-'+neurosynth_order.domain
@@ -825,32 +826,105 @@ ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular si
           loc='lower left', ncol=2, bbox_to_anchor=(-0.4, -0.225))
 ```
 
+#### 5E. Validation of relationship between energy density and receptor density expression from receptor-PET imaging
+
+```python
+ext_pet_roi_maps = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen2021_19-pet-tracers_roi.csv'))
+
+#selected_tracers=np.array(['MU','5HT4','A4B2'])
+#mmp_atlas = input_data.NiftiMasker(mask_img=remove_ext(atlas_fn)+'_bin.nii.gz')
+#mmp_roi_ids = mmp_atlas.fit_transform(atlas_fn)
+#sel_par = 'signal_density'
+#if sel_par!='signal_density':
+#    sel_par_label = 'CMRglc\n[umol/(min*100g)]' if sel_par==pet_metric else 'DC [Z-score]'
+#else:
+#    sel_par_label = ''
+#genexp_pet_df = pd.DataFrame({})
+#for f in glob.glob('ext_data/Hansen2021/PET/*3mm.nii.gz'):
+#    syn_den_label = os.path.basename(remove_ext(f)).split('_')[0]
+#    if syn_den_label=='MU': syn_den_label='OPRM1'
+#    if syn_den_label=='5HT4': syn_den_label='HTR4'
+#    if syn_den_label=='A4B2': syn_den_label='CHRNA4'
+#    if syn_den_label in selected_genes:
+#        syn_den = mmp_atlas.fit_transform(f)
+#        syn_den_df = pd.DataFrame({'roi_id':mmp_roi_ids.flatten(),'value':syn_den.flatten()})
+#        syn_den_df = syn_den_df.groupby('roi_id', as_index=False).mean()[:180]
+#        syn_den_df['value_z'] = stats.zscore(syn_den_df['value'])
+#        syn_den_df['neurotransmitter'] = selected_tracers[selected_genes==syn_den_label].item()
+#        syn_den_df['variable'] = 'PET'
+#        syn_den_df['energy_density'] = metric2mmp(all_avg_roi_vals,sel_par,'roi_id')
+#        gene_exp = genes[syn_den_label].to_numpy()[:180]
+#        gene_exp[np.isnan(gene_exp)]=np.min(gene_exp)-1 if np.min(gene_exp)<0 else 0
+#        #syn_den_df['gene_expression'] = gene_exp
+#        syn_den_df = pd.concat([syn_den_df,pd.DataFrame({'roi_id':np.arange(1,181),
+#                                                         'value':genes[syn_den_label].to_numpy()[:180],
+#                                                         'value_z':stats.zscore(genes[syn_den_label].to_numpy()[:180]),
+#                                                         'energy_density':metric2mmp(all_avg_roi_vals,sel_par,'roi_id'),
+#                                                         'neurotransmitter':selected_tracers[selected_genes==syn_den_label].item(),#syn_den_label,
+#                                                         'variable':'gene_expression'
+#                                                        })],ignore_index=True)
+#        syn_den_df = syn_den_df[syn_den_df.energy_density>syn_den_df.energy_density.min()]
+#        genexp_pet_df = pd.concat([genexp_pet_df,syn_den_df], ignore_index=True)
+#
+#for nt in selected_genes:
+#    pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='CHRNA4' else plt.cm.tab20c([4]).flatten()
+#    multiple_joinplot(genexp_pet_df,'value_z','energy_density',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='gene_expression')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
+#                      [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
+#                      xlabel=nt+' [Z-score]',ylabel='Energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5)#,xlim=(-3,5),ylim=ylim,
+
+```
+
+#### 5F. Energy density variance explained by external receptor-PET density-maps
+
+```python
+#ext_pet_roi_maps_mat = stats.zscore(ext_pet_roi_maps.to_numpy()[:,1:], axis=0)
+#ext_pet_labels = ext_pet_roi_maps.columns[1:].to_list()
+#all_ind_roi_ed_vals = all_ind_roi_vals.groupby(['sid','roi_id'],as_index=False).median()[['sid','roi_id','energy_density']].pivot(index='roi_id',columns='sid', values='energy_density').reset_index()
+#all_ind_roi_ed_vals = all_ind_roi_ed_vals[all_ind_roi_ed_vals.roi_id.isin(ext_pet_roi_maps.roi_id.unique())]
+#all_ind_roi_ed_vals_mat= stats.zscore(all_ind_roi_ed_vals.to_numpy(), axis=0,nan_policy='omit')[:,1:]
+#all_ind_roi_ed_vals_mat = np.nan_to_num(all_ind_roi_ed_vals_mat)
+#
+##PLS
+#ed_ext_pet_roi_pls = pyls.behavioral_pls(all_ind_roi_ed_vals_mat,ext_pet_roi_maps_mat,n_perm=1000,n_boot=1000,n_proc=6)
+n_sign_comp = (ed_ext_pet_roi_pls.permres.pvals<=0.05).sum()
+print(ed_ext_pet_roi_pls.varexp[:n_sign_comp])
+print(ed_ext_pet_roi_pls.permres.pvals[:n_sign_comp])
+icx = 0 # Selected component
+
+ext_pet_colors = np.repeat(np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])[np.newaxis,:],len(ext_pet_labels),axis=0)
+ext_pet_colors[5:7] = plt.cm.tab20c([6]).flatten()
+ext_pet_colors[12] = plt.cm.tab20c([17]).flatten()
+ext_pet_colors[16] = plt.cm.tab20c([17]).flatten()
+ext_pet_colors[17] = plt.cm.tab20c([6]).flatten()
+ext_pet_colors[18] = plt.cm.tab20c([17]).flatten()
+
+fig, axs = plt.subplots(1, 1, figsize=(3, 6))
+ext_pet_colors_mod = ext_pet_colors.copy()
+err = (ed_ext_pet_roi_pls["bootres"]["y_loadings_ci"][:, icx, 1] - ed_ext_pet_roi_pls["bootres"]["y_loadings_ci"][:, icx, 0]) / 2
+sorted_idx = np.argsort(ed_ext_pet_roi_pls["y_loadings"][:, icx])#[::-1] 
+significance_index = np.zeros(len(ext_pet_labels), dtype=bool)    
+axs.barh(np.arange(len(err)), np.sort(ed_ext_pet_roi_pls["y_loadings"][:, icx]),xerr=err[sorted_idx],color=ext_pet_colors_mod[sorted_idx])
+axs.set_yticks(np.arange(ext_pet_roi_maps.shape[1]-1))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
+axs.set_yticklabels(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
+for patch in  [i for (i, v) in zip(axs.patches, np.isin(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx],['A4B2','MU','5HT4'])) if v]:
+    patch.set_edgecolor('k')
+axs.patches[np.where((np.array(ext_pet_labels)=='mGluR5')[sorted_idx])[0][0]].set_edgecolor(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])
+axs.patches[np.where((np.array(ext_pet_labels)=='GABAa-bz')[sorted_idx])[0][0]].set_edgecolor(plt.cm.tab20c([6]).flatten())
+axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set_edgecolor(plt.cm.tab20c([6]).flatten())            
+        
+#plt.figure()
+#plot_surf(metric2mmp(pd.DataFrame({'roi_id':valid_roi_ids,'ed_score':ed_ext_pet_roi_pls.x_scores[:,icx]}),'ed_score','roi_id'),
+#          os.path.join(img_dir,f'ed_score_{icx}'),colorbar=True,cmap=sel_cm,fig_title=f'ED score {icx}',vlow=5,vhigh=95)
+fig.tight_layout()
+```
+
+```python
+
+```
+
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### bin
 <!-- #endregion -->
-
-```python
-#SHow that the relationship is linear
-palette_regplot_index = 12 #12 for tum.b 5 for TUM.a1
-for site in list(cohorts_metadata.keys())[:1]:#[:-1]:#cohorts_metadata.keys():#
-    filtered_index_lists = []
-    np_null_dists = []
-    filter_labels = []
-    palette_regplot = []
-    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())[-1:]):
-        cohort = f'{site}.{coh}'
-        filtered_index_lists += [all_avg_roi_vals.cohort==cohort]
-        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
-        filter_labels += [cohort]
-        if cix<2:
-            palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
-        else:
-            palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
-    src.functions.multiple_joinplot(all_avg_roi_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
-                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25,
-                      xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
-    palette_regplot_index += 4
-```
 
 <!-- #region tags=[] -->
 #### Energy density across cohorts
