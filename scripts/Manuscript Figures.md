@@ -571,7 +571,7 @@ allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] -->
 ### Figure 4. Layer specific cellular organization of energy dense regions
 #### 4A. Histological cell density across cortical layers 
 <!-- #endregion -->
@@ -701,8 +701,8 @@ plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)]
 
 hist_data = np.histogram_bin_edges(corr_ed_gexp.r.to_numpy(), bins=len(plt.gca().patches))
 sel_genes_colors = [plt.cm.Dark2(range(8))[3].flatten(),plt.cm.Dark2(range(8))[3].flatten(),plt.cm.tab20c([4]).flatten()]
-genes_with_pet_available = np.array(['OPRM1','HTR4','CHRNA4']) # derived from figure 5E, buzt used here to don't duplicate the histogram there
-for cix,sel_gene in enumerate(genes_with_pet_available):
+gene_ids_with_pet_available = np.array(['OPRM1','HTR4','CHRNA4']) # derived from figure 5E, buzt used here to don't duplicate the histogram there
+for cix,sel_gene in enumerate(gene_ids_with_pet_available):
     patch_index = (np.abs((hist_data-corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.gene==sel_gene)].r.item()))).argmin()
     plt.gca().patches[patch_index].set_facecolor(sel_genes_colors[cix])
 patch_index = (np.abs((hist_data-0))).argmin() #0 correlation gene
@@ -830,47 +830,28 @@ ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular si
 
 ```python
 ext_pet_roi_maps = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen2021_19-pet-tracers_roi.csv'))
+ext_pet_roi_maps[ext_pet_roi_maps.columns[ext_pet_roi_maps.columns!='roi_id']] = ext_pet_roi_maps[ext_pet_roi_maps.columns[ext_pet_roi_maps.columns!='roi_id']].apply(stats.zscore)
+tracer_labels = np.array(['MU','5HT4','A4B2'])
+gexp_pet_df = ext_pet_roi_maps[['roi_id']+list(tracer_labels)]
+gexp_pet_df = gexp_pet_df[gexp_pet_df.roi_id<=180] #only left hemisphere acquired in all AHBA subjects
+gexp_pet_df['energy_density'] = avg_roi_ed_vals[(gexp_pet_df.roi_id.unique()-1).astype(int)]
+gexp_pet_df = gexp_pet_df.melt(['roi_id','energy_density'],var_name='neuromodulator',ignore_index=False)
+gexp_pet_df['source'] = 'PET'
 
-#selected_tracers=np.array(['MU','5HT4','A4B2'])
-#mmp_atlas = input_data.NiftiMasker(mask_img=remove_ext(atlas_fn)+'_bin.nii.gz')
-#mmp_roi_ids = mmp_atlas.fit_transform(atlas_fn)
-#sel_par = 'signal_density'
-#if sel_par!='signal_density':
-#    sel_par_label = 'CMRglc\n[umol/(min*100g)]' if sel_par==pet_metric else 'DC [Z-score]'
-#else:
-#    sel_par_label = ''
-#genexp_pet_df = pd.DataFrame({})
-#for f in glob.glob('ext_data/Hansen2021/PET/*3mm.nii.gz'):
-#    syn_den_label = os.path.basename(remove_ext(f)).split('_')[0]
-#    if syn_den_label=='MU': syn_den_label='OPRM1'
-#    if syn_den_label=='5HT4': syn_den_label='HTR4'
-#    if syn_den_label=='A4B2': syn_den_label='CHRNA4'
-#    if syn_den_label in selected_genes:
-#        syn_den = mmp_atlas.fit_transform(f)
-#        syn_den_df = pd.DataFrame({'roi_id':mmp_roi_ids.flatten(),'value':syn_den.flatten()})
-#        syn_den_df = syn_den_df.groupby('roi_id', as_index=False).mean()[:180]
-#        syn_den_df['value_z'] = stats.zscore(syn_den_df['value'])
-#        syn_den_df['neurotransmitter'] = selected_tracers[selected_genes==syn_den_label].item()
-#        syn_den_df['variable'] = 'PET'
-#        syn_den_df['energy_density'] = metric2mmp(all_avg_roi_vals,sel_par,'roi_id')
-#        gene_exp = genes[syn_den_label].to_numpy()[:180]
-#        gene_exp[np.isnan(gene_exp)]=np.min(gene_exp)-1 if np.min(gene_exp)<0 else 0
-#        #syn_den_df['gene_expression'] = gene_exp
-#        syn_den_df = pd.concat([syn_den_df,pd.DataFrame({'roi_id':np.arange(1,181),
-#                                                         'value':genes[syn_den_label].to_numpy()[:180],
-#                                                         'value_z':stats.zscore(genes[syn_den_label].to_numpy()[:180]),
-#                                                         'energy_density':metric2mmp(all_avg_roi_vals,sel_par,'roi_id'),
-#                                                         'neurotransmitter':selected_tracers[selected_genes==syn_den_label].item(),#syn_den_label,
-#                                                         'variable':'gene_expression'
-#                                                        })],ignore_index=True)
-#        syn_den_df = syn_den_df[syn_den_df.energy_density>syn_den_df.energy_density.min()]
-#        genexp_pet_df = pd.concat([genexp_pet_df,syn_den_df], ignore_index=True)
-#
-#for nt in selected_genes:
-#    pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='CHRNA4' else plt.cm.tab20c([4]).flatten()
-#    multiple_joinplot(genexp_pet_df,'value_z','energy_density',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='gene_expression')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
-#                      [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
-#                      xlabel=nt+' [Z-score]',ylabel='Energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5)#,xlim=(-3,5),ylim=ylim,
+gexp_with_pet_available_df = ahba_gene_expression[gene_ids_with_pet_available][:180].apply(stats.zscore)
+gexp_with_pet_available_df.columns = tracer_labels
+gexp_with_pet_available_df = gexp_with_pet_available_df[gexp_with_pet_available_df.index.isin(gexp_pet_df.roi_id.unique()-1)]
+gexp_with_pet_available_df['energy_density'] = avg_roi_ed_vals[(gexp_pet_df.roi_id.unique()-1).astype(int)]
+gexp_with_pet_available_df['roi_id'] = gexp_pet_df.roi_id.unique()
+gexp_with_pet_available_df = gexp_with_pet_available_df.melt(['roi_id','energy_density'],var_name='neuromodulator',ignore_index=False)
+gexp_with_pet_available_df['source'] = 'gene_expression'
+
+gexp_pet_df = pd.concat([gexp_pet_df,gexp_with_pet_available_df], ignore_index=True)
+for nt in tracer_labels:
+    pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
+    src.functions.multiple_joinplot(gexp_pet_df,'value','energy_density',[((gexp_pet_df.neuromodulator==nt) & (gexp_pet_df.source=='gene_expression')),((gexp_pet_df.neuromodulator==nt) & (gexp_pet_df.source=='PET'))],
+                      [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
+                      xlabel=nt+' [Z-score]',ylabel='energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5)
 
 ```
 
