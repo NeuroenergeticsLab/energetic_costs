@@ -206,7 +206,7 @@ gray_c = [0.77,0.77,0.77,1]
 extended_cm=np.concatenate((np.array([gray_c]),getattr(plt.cm,sel_cm)(np.arange(0,getattr(plt.cm,sel_cm).N))))
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 1. Energy metabolism scales linearly with brain connectivity
 #### 1A. Multimodal brain imaging
 <!-- #endregion -->
@@ -331,13 +331,12 @@ plt.gca().set_xlabel('Pearson correlation')
 
 ```
 
-#### 1C. Group analysis
+#### 1C. Group analysis voxelwise | S1 ROIwise
 
 ```python
-#plot_voxelwise = False
-#selected_df = all_ind_vox_vals if plot_voxelwise else all_ind_roi_vals
-#s = 0.1 if plot_voxelwise else  25
-palette_regplot_index = 5
+roiwise_results = False
+all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
+palette_regplot_index = 5 
 for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     filtered_index_lists = []
     np_null_dists = []
@@ -345,17 +344,18 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     palette_regplot = []
     for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
         cohort = f'{site}.{coh}'
-        filtered_index_lists += [all_avg_vox_vals.cohort==cohort]
+        filtered_index_lists += [all_avg_sel_vals.cohort==cohort]
         np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
         filter_labels += [cohort]
         if cix<2:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
         else:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
-    src.functions.multiple_joinplot(all_avg_vox_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
-                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),
+    src.functions.multiple_joinplot(all_avg_sel_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
+                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
                       xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
     palette_regplot_index += 4
+   
 ```
 
 <!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
@@ -571,7 +571,7 @@ allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
-<!-- #region tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 4. Layer specific cellular organization of energy dense regions
 #### 4A. Histological cell density across cortical layers 
 <!-- #endregion -->
@@ -680,8 +680,10 @@ src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_
 
 ```
 
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 5. Higher rate of neuromodulation in energy dense regions
 #### 5A. Significant correlations between energy density and gene expression of brain specific genes
+<!-- #endregion -->
 
 ```python
 corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
@@ -898,6 +900,9 @@ axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set(
 #          os.path.join(img_dir,f'ed_score_{icx}'),colorbar=True,cmap=sel_cm,fig_title=f'ED score {icx}',vlow=5,vhigh=95)
 fig.tight_layout()
 ```
+
+### Supplementary figures
+#### S1.
 
 ```python
 
