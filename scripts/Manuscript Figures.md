@@ -331,13 +331,18 @@ plt.gca().set_xlabel('Pearson correlation')
 
 ```
 
-#### 1C. Group analysis voxelwise | S1 ROIwise
+#### 1C. Group analysis voxelwise | S1 FC/SC ROIwise
 
 ```python
 roiwise_results = False
+dti_results = False
+roiwise_results = roiwise_results if not dti_results else True
 all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
+sel_x_var = x_var if not dti_results else 'sc_strength_z'
+sel_xlabel = xlabel if not dti_results else 'SC strength [Z-score]'
+sel_sites = list(cohorts_metadata.keys())[:-1] if not dti_results else list(cohorts_metadata.keys())[:1]
 palette_regplot_index = 5 
-for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
+for site in sel_sites:
     filtered_index_lists = []
     np_null_dists = []
     filter_labels = []
@@ -345,15 +350,16 @@ for site in list(cohorts_metadata.keys())[:-1]:#cohorts_metadata.keys():#
     for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
         cohort = f'{site}.{coh}'
         filtered_index_lists += [all_avg_sel_vals.cohort==cohort]
-        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(x_var,y_var)]]
+        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(sel_x_var,y_var)]]
         filter_labels += [cohort]
         if cix<2:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
         else:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
-    src.functions.multiple_joinplot(all_avg_sel_vals,x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
-                      plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
-                      xlabel=xlabel,ylabel=ylabel,xlim=(-2,3),ylim=(10,50),legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
+    src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
+                                    plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
+                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not dti_results else None,ylim=(10,50) if not dti_results else None,
+                                    legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
     palette_regplot_index += 4
    
 ```
