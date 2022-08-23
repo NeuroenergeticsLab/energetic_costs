@@ -34,7 +34,7 @@ import joypy
 from nilearn import datasets, input_data
 import pingouin as pg
 import nibabel as nib
-import pls
+import pyls
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
@@ -54,6 +54,7 @@ sns.set_style("whitegrid")
 import src.functions
 %load_ext autoreload
 %autoreload 2
+
 ```
 
 <!-- #region tags=[] -->
@@ -232,11 +233,12 @@ p_vox_np = nonparp(r_vox_param, cohorts_metadata[reference_site][reference_cohor
 p_vox_np = p_vox_np if p_vox_np>0 else 0.00001
 g = src.functions.plot_joint(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],s=s,robust=False,kdeplot=False,truncate=True,
                              xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_vox_np)
+print(f'{all_ind_vox_vals.groupby(["sid","cohort"],as_index=False).count().roi_id.mean():.2f} ± {all_ind_vox_vals.groupby(["sid","cohort"],as_index=False).count().roi_id.std():.2f} cortical voxels across all subjects')
 
 ## Smash random distribution
 plt.figure(figsize=(2,5))
 src.functions.plot_rnd_dist(cohorts_metadata[reference_site][reference_cohort]['individual_smash'][example_sid][f'smash_{x_var}-{y_var}'],
-                            r_param,p_np,plt.gca(),xlabel=xlabel,ylabel=ylabel,xlim=(-0.5,0.5),print_text=True)
+                            r_vox_param,p_vox_np,plt.gca(),xlabel=xlabel,ylabel=ylabel,xlim=(-0.5,0.5),print_text=True)
 
 ## Individual ROIwise scatterplot
 example_ind_roi_vals = example_ind_vox_vals.groupby('roi_id').median()
@@ -255,7 +257,7 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 ```python
 selected_df = all_ind_vox_vals
 s = 0.1
-selected_site = 'TUM' #options: TUM or VIE
+selected_site = 'VIE' #options: TUM or VIE
 coh0 = 'a1' #options: a1 or b, if the latter (replication cohort TUM), it will ignore the coh1 variable
 coh1 = 'a2' #options: a2
 selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
@@ -294,21 +296,23 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
 ```
 
 ```python
-if 'reg_ind_lev_df' not in locals():
-    reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p','slope'])
-    for site in list(cohorts_metadata.keys())[:-1]:
-        for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
-            cohort = f'{site}.{coh}'
-            for sid in cohorts_metadata[site][coh]['sids']:
-                subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
-                ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
-                ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
-                reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1], 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
-                
-    reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
-    reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
-    reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
-    reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
+#if 'reg_ind_lev_df' not in locals():
+reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'variance','slope'])
+for site in list(cohorts_metadata.keys())[:-1]:
+    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
+        cohort = f'{site}.{coh}'
+        for sid in cohorts_metadata[site][coh]['sids']:
+            subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
+            ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
+            ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
+            reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
+
+reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
+            
+reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
+reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
+reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
+reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
 
 cohort_order = ['TUM.a1','TUM.a2','TUM.b','VIE.a1','VIE.a2']
 coh_colors = {}
@@ -326,20 +330,45 @@ plt.gca().xaxis.grid(False)
 plt.gca().yaxis.grid(True)
 plt.gca().set_xlabel('Pearson correlation')
 
+## STATS
+ind_stats = reg_ind_lev_df.describe().reset_index()
+variance_diff_bet_cohorts = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median(),dv='variance', between=['cohort'], subject='sid',parametric=False)
+variance_diff_bet_cohorts.loc[(variance_diff_bet_cohorts.A == 'TUM.a1') & (variance_diff_bet_cohorts.B == 'TUM.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['TUM.a1','TUM.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
+                                     dv='variance', within=['cohort'], subject='sid',parametric=False).to_numpy()                                                                                                                                          
+variance_diff_bet_cohorts.loc[(variance_diff_bet_cohorts.A == 'VIE.a1') & (variance_diff_bet_cohorts.B == 'VIE.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['VIE.a1','VIE.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
+                                     dv='variance', within=['cohort'], subject='sid',parametric=False).to_numpy()
+variance_diff_bet_cohorts['p-corr'] = pg.multicomp(variance_diff_bet_cohorts['p-unc'].to_numpy(),method='fdr_bh')[1]
+variance_diff_bet_cohorts['p-adjust'] = 'fdr_bh'
+print(f'Variance range = {" - ".join(str(val*100) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"variance"].to_list())}; mean = {100*ind_stats.loc[ind_stats["index"]=="mean","variance"].item():.2f}; std = {100*ind_stats.loc[ind_stats["index"]=="std","variance"].item():.2f}; p > {variance_diff_bet_cohorts["p-corr"].min():.2f}, pairwise non-parametric tests FDR corrected') # Mann-Whitney between different cohorts of subjects and Wilcoxon for wihithin subjects cohorts
 
+slope_diff_bet_cohorts = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median(),dv='slope', between=['cohort'], subject='sid',parametric=False)
+slope_diff_bet_cohorts.loc[(slope_diff_bet_cohorts.A == 'TUM.a1') & (slope_diff_bet_cohorts.B == 'TUM.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['TUM.a1','TUM.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
+                                     dv='slope', within=['cohort'], subject='sid',parametric=False).to_numpy()                                                                                                                                          
+slope_diff_bet_cohorts.loc[(slope_diff_bet_cohorts.A == 'VIE.a1') & (slope_diff_bet_cohorts.B == 'VIE.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['VIE.a1','VIE.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
+                                     dv='slope', within=['cohort'], subject='sid',parametric=False).to_numpy()
+slope_diff_bet_cohorts['p-corr'] = pg.multicomp(slope_diff_bet_cohorts['p-unc'].to_numpy(),method='fdr_bh')[1]
+slope_diff_bet_cohorts['p-adjust'] = 'fdr_bh'
+print(f'Slope range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"slope"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","slope"].item():.2f}; std = {ind_stats.loc[ind_stats["index"]=="std","slope"].item():.2f}; p = {slope_diff_bet_cohorts["p-corr"].min():.2f}, pairwise non-parametric tests FDR corrected') # Mann-Whitney between different cohorts of subjects and Wilcoxon for wihithin subjects cohorts
 
+corr_ed_age = pg.corr(reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()['slope'].to_numpy(),
+                               reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()['age'].to_numpy()).reset_index()
+print(f'The model fit is independent of age (r = {corr_ed_age["r"].item():.2f}; p = {corr_ed_age["p-val"].item():.2f}; CI: [{corr_ed_age["CI95%"].item()[0]:.2f}, {corr_ed_age["CI95%"].item()[1]:.2f}])') 
 
+slope_diff_bet_sex = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex',],as_index=False).median(),
+                                        dv='slope', between=['sex'], subject='sid',parametric=False)
+print(f'The model fit is independent of sex (p = {slope_diff_bet_sex["p-unc"].item():.2f}, pairwise unpaired Mann-Whitney test)')
 ```
 
-#### 1C. Group analysis voxelwise | S1 FC/SC ROIwise
+#### 1C. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
 
 ```python
 roiwise_results = False
-dti_results = False
-roiwise_results = roiwise_results if not dti_results else True
+other_results = 'std_dynamic_degree_z'
+roiwise_results = roiwise_results if not other_results else True
 all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
-sel_x_var = x_var if not dti_results else 'sc_strength_z'
-sel_xlabel = xlabel if not dti_results else 'SC strength [Z-score]'
+sel_x_var = x_var if not other_results else other_results
+sel_xlabel = xlabel if not other_results else 'SC strength [Z-score]'
+sel_xlabel = xlabel if other_results != 'std_dynamic_degree_z' else 'std(dynamic DC) [Z-score]'
 sel_sites = list(cohorts_metadata.keys())[:-1] if not dti_results else list(cohorts_metadata.keys())[:1]
 palette_regplot_index = 5 
 for site in sel_sites:
@@ -364,7 +393,77 @@ for site in sel_sites:
    
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+***Statistical differences in the variance explained by models adding the dynamic DC and SC***
+
+```python
+# Run this cell tobe able to run R in the next cell
+%reload_ext rpy2.ipython
+avg_roi_vals = all_avg_roi_vals[~(all_avg_roi_vals.cohort.isin(['VIE.a1','VIE.a2']))].groupby('roi_id',as_index=False).median()
+
+```
+
+```R magic_args="-i avg_roi_vals"
+#head(all_avg_roi_vals[all_avg_roi_vals$cohort=="TUM.a1",])
+lm_simple <- lm(cmrglc ~ degree_z, data = avg_roi_vals) #all_avg_roi_vals[all_avg_roi_vals$cohort=="TUM.a1",])
+lm_plus_dyndc <- lm(cmrglc ~ degree_z + std_dynamic_degree_z, data = avg_roi_vals) 
+lm_plus_sc <- lm(cmrglc ~ degree_z + sc_strength_z, data = avg_roi_vals) 
+lm_plus_dyndc_comp <- anova(lm_simple,lm_plus_dyndc)#[2,6]
+lm_plus_sc_comp <- anova(lm_simple,lm_plus_sc)#[2,6]
+summ_lm_simple <- summary(lm_simple)
+summ_lm_plus_dyndc <- summary(lm_plus_dyndc)
+summ_lm_plus_sc <- summary(lm_plus_sc)
+#print(summary(lm_simple))
+print(summ_lm_plus_sc)
+
+#paste("Variance explained by DC ",)
+```
+
+```python
+#print(summ_lm_simple['adj.r.squared'][0])
+import rpy2.robjects as robjects
+from rpy2.robjects.packages import importr
+from rpy2.robjects import FloatVector
+stats = importr('stats')
+base = importr('base')
+cmrglc_r = FloatVector(avg_roi_vals.cmrglc.to_list())
+degree_z_r = FloatVector(avg_roi_vals.degree_z.to_list())
+std_dynamic_degree_z_r = FloatVector(avg_roi_vals.std_dynamic_degree_z.to_list())
+sc_strength_z_r = FloatVector(avg_roi_vals.sc_strength_z.to_list())
+robjects.globalenv["cmrglc"] = cmrglc_r
+robjects.globalenv["degree_z"] = degree_z_r
+robjects.globalenv["std_dynamic_degree_z"] = std_dynamic_degree_z_r
+robjects.globalenv["sc_strength_z"] = sc_strength_z_r
+lm_simple = stats.lm("cmrglc ~ degree_z")
+robjects.globalenv["lm_simple"] = lm_simple
+lm_plus_dyndc = stats.lm("cmrglc ~ degree_z + std_dynamic_degree_z")
+robjects.globalenv["lm_plus_dyndc"] = lm_plus_dyndc
+lm_plus_dyndc_comp = stats.anova(lm_simple,lm_plus_dyndc)
+lm_plus_sc = stats.lm("cmrglc ~ degree_z + sc_strength_z")
+robjects.globalenv["lm_plus_sc"] = lm_plus_sc
+lm_plus_sc_comp = stats.anova(lm_simple,lm_plus_sc)
+
+variance_lm_simple = 100*float(str(base.summary(lm_simple)[8]).split(' ')[1].replace("\n",""))
+variance_lm_plus_dyndc = 100*float(str(base.summary(lm_plus_dyndc)[8]).split(' ')[1].replace("\n",""))
+p_lm_plus_dyndc = float(str(lm_plus_dyndc_comp[5]).split(' ')[-1].replace("\n",""))
+variance_lm_plus_sc = 100*float(str(base.summary(lm_plus_sc)[8]).split(' ')[1].replace("\n",""))
+p_lm_plus_sc = float(str(lm_plus_sc_comp[5]).split(' ')[-1].replace("\n",""))
+
+print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%, p = {p_lm_plus_dyndc:.2f} ANOVA). In contrast, the model with the strenght of the structural connectivity added to the model explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%, p = {p_lm_plus_sc:.2f} ANOVA)')
+
+#print(base.summary(lm_simple)[8])
+#print(base.summary(lm_plus_dyndc_comp)[8])
+#print(base.summary(lm_plus_sc_comp)[8])
+#lm_simple
+```
+
+```python
+#lm_plus_dyndc_comp = stats.anova(lm_simple,lm_plus_dyndc)
+lm_plus_sc_comp[5]
+
+
+```
+
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
 <!-- #endregion -->
@@ -494,7 +593,7 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 
 ```
 
-<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 3. Energy density distribution relates to human cognitive functions and cortical evolution
 #### 3A. Cognitive functions
 <!-- #endregion -->
