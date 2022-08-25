@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 from scipy import stats
 import seaborn as sns
-
+import pingouin as pg
 import matplotlib.colors as clrs
 from matplotlib import colorbar
 from matplotlib import pyplot as plt
@@ -218,18 +218,24 @@ def read_mask_nii(mask_fn,roi_labels=[],z_score=False,**nii_fns):
         data_dict[prop] = data_masked
     return data_dict
         
-def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,color_scatterplot,xlabel='',ylabel='',xlim=None,ylim=None,s=0.1,legend_bbox_to_anchor=(-0.2,-0.5),plot_legend=True,mad_thr=None,prefix_legend_title=''):
+def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,color_scatterplot,xlabel='',ylabel='',xlim=None,ylim=None,s=0.1,legend_bbox_to_anchor=(-0.2,-0.5),plot_legend=True,mad_thr=None,prefix_legend_title='',print_ci=False):
     ps_legend_flag = True
     for fidx,filtered_index_list in enumerate(filtered_index_lists):
         df_filtered = df[filtered_index_list].copy()
         if mad_thr:
             df_filtered = df_filtered[remove_outliers(df_filtered[x].to_numpy(),mad_thr)]        
-        rp,pp = stats.pearsonr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y])
+        
+        
+        corr_mod = pg.corr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y]).reset_index()
+        #rp,pp = stats.pearsonr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y])
+        rp = corr_mod["r"].item()
+        pp = corr_mod["p-val"].item()
         p_label = 'p_{smash}' if len(np_null_dists)>0 else 'p'
         pnp = nonparp(rp, np_null_dists[fidx]) if len(np_null_dists)>0 else pp
         pnp = pnp if pnp>0 else 0.001
-        ps_legend_flag = (ps_legend_flag) & (pnp==0.001)
-        label = f'{filter_labels[fidx]}={rp:.2f}({pnp:.3f})' if((pnp>0) & (~ps_legend_flag)) else f'{filter_labels[fidx]}={rp:.2f}'
+        ps_legend_flag = (ps_legend_flag) & (pnp==0.001) & (len(np_null_dists)>0)
+        label = f'{filter_labels[fidx]}={rp:.2f} ({pnp:.3f})' if((pnp>0) & (~ps_legend_flag)) else f'{filter_labels[fidx]}={rp:.2f}'
+        if print_ci: label = label.replace(')',f', CI: [{corr_mod["CI95%"].item()[0]:.2f}, {corr_mod["CI95%"].item()[1]:.2f}])')
         color_scatterplot_mod = color_scatterplot if len(color_scatterplot)>0 else palette_regplot[fidx]
         if fidx==0:
             g = sns.JointGrid(data=df_filtered, x=x, y=y)

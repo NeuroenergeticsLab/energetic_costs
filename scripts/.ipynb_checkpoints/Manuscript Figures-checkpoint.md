@@ -396,10 +396,9 @@ for site in sel_sites:
 ***Statistical differences in the variance explained by models adding the dynamic DC and SC***
 
 ```python
-# Run this cell tobe able to run R in the next cell
+# Run this cell tobe able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
 %reload_ext rpy2.ipython
 avg_roi_vals = all_avg_roi_vals[~(all_avg_roi_vals.cohort.isin(['VIE.a1','VIE.a2']))].groupby('roi_id',as_index=False).median()
-
 ```
 
 ```R magic_args="-i avg_roi_vals"
@@ -423,7 +422,7 @@ print(summ_lm_plus_sc)
 import rpy2.robjects as robjects
 from rpy2.robjects.packages import importr
 from rpy2.robjects import FloatVector
-stats = importr('stats')
+rstats = importr('stats')
 base = importr('base')
 cmrglc_r = FloatVector(avg_roi_vals.cmrglc.to_list())
 degree_z_r = FloatVector(avg_roi_vals.degree_z.to_list())
@@ -433,14 +432,14 @@ robjects.globalenv["cmrglc"] = cmrglc_r
 robjects.globalenv["degree_z"] = degree_z_r
 robjects.globalenv["std_dynamic_degree_z"] = std_dynamic_degree_z_r
 robjects.globalenv["sc_strength_z"] = sc_strength_z_r
-lm_simple = stats.lm("cmrglc ~ degree_z")
+lm_simple = rstats.lm("cmrglc ~ degree_z")
 robjects.globalenv["lm_simple"] = lm_simple
-lm_plus_dyndc = stats.lm("cmrglc ~ degree_z + std_dynamic_degree_z")
+lm_plus_dyndc = rstats.lm("cmrglc ~ degree_z + std_dynamic_degree_z")
 robjects.globalenv["lm_plus_dyndc"] = lm_plus_dyndc
-lm_plus_dyndc_comp = stats.anova(lm_simple,lm_plus_dyndc)
-lm_plus_sc = stats.lm("cmrglc ~ degree_z + sc_strength_z")
+lm_plus_dyndc_comp = rstats.anova(lm_simple,lm_plus_dyndc)
+lm_plus_sc = rstats.lm("cmrglc ~ degree_z + sc_strength_z")
 robjects.globalenv["lm_plus_sc"] = lm_plus_sc
-lm_plus_sc_comp = stats.anova(lm_simple,lm_plus_sc)
+lm_plus_sc_comp = rstats.anova(lm_simple,lm_plus_sc)
 
 variance_lm_simple = 100*float(str(base.summary(lm_simple)[8]).split(' ')[1].replace("\n",""))
 variance_lm_plus_dyndc = 100*float(str(base.summary(lm_plus_dyndc)[8]).split(' ')[1].replace("\n",""))
@@ -448,22 +447,11 @@ p_lm_plus_dyndc = float(str(lm_plus_dyndc_comp[5]).split(' ')[-1].replace("\n","
 variance_lm_plus_sc = 100*float(str(base.summary(lm_plus_sc)[8]).split(' ')[1].replace("\n",""))
 p_lm_plus_sc = float(str(lm_plus_sc_comp[5]).split(' ')[-1].replace("\n",""))
 
-print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%, p = {p_lm_plus_dyndc:.2f} ANOVA). In contrast, the model with the strenght of the structural connectivity added to the model explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%, p = {p_lm_plus_sc:.2f} ANOVA)')
-
-#print(base.summary(lm_simple)[8])
-#print(base.summary(lm_plus_dyndc_comp)[8])
-#print(base.summary(lm_plus_sc_comp)[8])
-#lm_simple
-```
-
-```python
-#lm_plus_dyndc_comp = stats.anova(lm_simple,lm_plus_dyndc)
-lm_plus_sc_comp[5]
-
+print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%, p = {p_lm_plus_dyndc:.2f} ANOVA). In contrast, the model with the strenght of the structural connectivity added, explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%, p = {p_lm_plus_sc:.2f} ANOVA)')
 
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
 <!-- #endregion -->
@@ -580,17 +568,6 @@ avg_consistent_pos_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed
 avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
                              labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_pos_roi_vals.index.tolist()])
 
-
-#low_cons_df =  mm_roi_df_cp_gx[mm_roi_df_cp_gx['conj_consistent']<0].groupby('nw').count().sort_values(by='roi_id', ascending=False)
-#high_cons_df = mm_roi_df_cp_gx[mm_roi_df_cp_gx['conj_consistent']>0].groupby('nw').count().sort_values(by='roi_id', ascending=False)
-#
-#
-#plt.figure()
-#low_cons_df.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',labels=['','','','','',''],startangle=90,colors=[atlas_dict['nw2color'][cx] for cx in low_cons_df.index.tolist()])
-#plt.figure()
-#high_cons_df.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',labels=['','','','','',''],startangle=90,colors=[atlas_dict['nw2color'][cx] for cx in high_cons_df.index.tolist()])
-
-
 ```
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
@@ -650,7 +627,7 @@ apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
 for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
     if apes_diff_sign[ix]<0.055:
         sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
-        plt.gca().text(ix, plt.gca().get_ylim()[1]-0.1, sign_text, ha='center', va='bottom', color='r', size=24)
+        plt.gca().text(ix, plt.gca().get_ylim()[1]-1.25, sign_text, ha='center', va='bottom', color='r', size=24)
 
 ```
 
@@ -676,7 +653,7 @@ allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 4. Layer specific cellular organization of energy dense regions
 #### 4A. Histological cell density across cortical layers 
 <!-- #endregion -->
@@ -773,7 +750,7 @@ stab_filtered_index_lists=[]
 for stab_filt in stab_filter_labels:
     stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
 src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],
-                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.45,0.65),ylim=(-8,8),s=10)
+                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.45,0.65),ylim=(-8,8),s=10,print_ci=True)
 plt.figure()
 stab_filter_labels = ['STAB_astrocytes','STAB_olygodendrocytes']
 stab_palette_regplot = [(0.5,0.5,0.5,0.5),(0.4,0.4,0.4,1)]
@@ -781,11 +758,11 @@ stab_filtered_index_lists=[]
 for stab_filt in stab_filter_labels:
     stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
 src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],
-                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.35,0.60),ylim=(-8,8),s=10)
+                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.35,0.60),ylim=(-8,8),s=10,print_ci=True)
 
 ```
 
-<!-- #region tags=[] jp-MarkdownHeadingCollapsed=true -->
+<!-- #region tags=[] -->
 ### Figure 5. Higher rate of neuromodulation in energy dense regions
 #### 5A. Significant correlations between energy density and gene expression of brain specific genes
 <!-- #endregion -->
@@ -958,7 +935,7 @@ for nt in tracer_labels:
     pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
     src.functions.multiple_joinplot(gexp_pet_df,'value','energy_density',[((gexp_pet_df.neuromodulator==nt) & (gexp_pet_df.source=='gene_expression')),((gexp_pet_df.neuromodulator==nt) & (gexp_pet_df.source=='PET'))],
                       [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
-                      xlabel=nt+' [Z-score]',ylabel='energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5)
+                      xlabel=nt+' [Z-score]',ylabel='energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5,print_ci=True)
 
 ```
 
