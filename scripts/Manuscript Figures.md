@@ -257,7 +257,7 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 ```python
 selected_df = all_ind_vox_vals
 s = 0.1
-selected_site = 'VIE' #options: TUM or VIE
+selected_site = 'TUM' #options: TUM or VIE
 coh0 = 'a1' #options: a1 or b, if the latter (replication cohort TUM), it will ignore the coh1 variable
 coh1 = 'a2' #options: a2
 selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
@@ -296,23 +296,23 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
 ```
 
 ```python
-#if 'reg_ind_lev_df' not in locals():
-reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'variance','slope'])
-for site in list(cohorts_metadata.keys())[:-1]:
-    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
-        cohort = f'{site}.{coh}'
-        for sid in cohorts_metadata[site][coh]['sids']:
-            subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
-            ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
-            ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
-            reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
-
-reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
-            
-reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
-reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
-reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
-reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
+if 'reg_ind_lev_df' not in locals():
+    reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'variance','slope'])
+    for site in list(cohorts_metadata.keys())[:-1]:
+        for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
+            cohort = f'{site}.{coh}'
+            for sid in cohorts_metadata[site][coh]['sids']:
+                subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
+                ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
+                ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
+                reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
+    
+    reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
+                
+    reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
+    reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
+    reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
+    reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
 
 cohort_order = ['TUM.a1','TUM.a2','TUM.b','VIE.a1','VIE.a2']
 coh_colors = {}
@@ -332,31 +332,22 @@ plt.gca().set_xlabel('Pearson correlation')
 
 ## STATS
 ind_stats = reg_ind_lev_df.describe().reset_index()
-variance_diff_bet_cohorts = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median(),dv='variance', between=['cohort'], subject='sid',parametric=False)
-variance_diff_bet_cohorts.loc[(variance_diff_bet_cohorts.A == 'TUM.a1') & (variance_diff_bet_cohorts.B == 'TUM.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['TUM.a1','TUM.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='variance', within=['cohort'], subject='sid',parametric=False).to_numpy()                                                                                                                                          
-variance_diff_bet_cohorts.loc[(variance_diff_bet_cohorts.A == 'VIE.a1') & (variance_diff_bet_cohorts.B == 'VIE.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['VIE.a1','VIE.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='variance', within=['cohort'], subject='sid',parametric=False).to_numpy()
-variance_diff_bet_cohorts['p-corr'] = pg.multicomp(variance_diff_bet_cohorts['p-unc'].to_numpy(),method='fdr_bh')[1]
-variance_diff_bet_cohorts['p-adjust'] = 'fdr_bh'
-print(f'Variance range = {" - ".join(str(val*100) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"variance"].to_list())}; mean = {100*ind_stats.loc[ind_stats["index"]=="mean","variance"].item():.2f}; std = {100*ind_stats.loc[ind_stats["index"]=="std","variance"].item():.2f}; p > {variance_diff_bet_cohorts["p-corr"].min():.2f}, pairwise non-parametric tests FDR corrected') # Mann-Whitney between different cohorts of subjects and Wilcoxon for wihithin subjects cohorts
+reg_mean_ind_lev_df = reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()
+reg_mean_ind_lev_df['cohort'] = reg_mean_ind_lev_df.cohort.str.split('.').str[0]
+reg_mean_ind_lev_df = reg_mean_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()
+r_ind_diff_bet_cohorts = pg.anova(data=reg_mean_ind_lev_df,dv='r', between=['cohort'])
+print(f'Pearson\'s r range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"r"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f}; s.d. = {ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f}; F({r_ind_diff_bet_cohorts["ddof1"].item()},{r_ind_diff_bet_cohorts["ddof2"].item()}) = {r_ind_diff_bet_cohorts["F"].item():.2f}, p = {r_ind_diff_bet_cohorts["p-unc"].item():.2f}, N-way ANOVA')
 
-slope_diff_bet_cohorts = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median(),dv='slope', between=['cohort'], subject='sid',parametric=False)
-slope_diff_bet_cohorts.loc[(slope_diff_bet_cohorts.A == 'TUM.a1') & (slope_diff_bet_cohorts.B == 'TUM.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['TUM.a1','TUM.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='slope', within=['cohort'], subject='sid',parametric=False).to_numpy()                                                                                                                                          
-slope_diff_bet_cohorts.loc[(slope_diff_bet_cohorts.A == 'VIE.a1') & (slope_diff_bet_cohorts.B == 'VIE.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['VIE.a1','VIE.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='slope', within=['cohort'], subject='sid',parametric=False).to_numpy()
-slope_diff_bet_cohorts['p-corr'] = pg.multicomp(slope_diff_bet_cohorts['p-unc'].to_numpy(),method='fdr_bh')[1]
-slope_diff_bet_cohorts['p-adjust'] = 'fdr_bh'
-print(f'Slope range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"slope"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","slope"].item():.2f}; std = {ind_stats.loc[ind_stats["index"]=="std","slope"].item():.2f}; p = {slope_diff_bet_cohorts["p-corr"].min():.2f}, pairwise non-parametric tests FDR corrected') # Mann-Whitney between different cohorts of subjects and Wilcoxon for wihithin subjects cohorts
+r_ind_diff_bet_sex = pg.anova(data=reg_mean_ind_lev_df,dv='r', between=['sex'])
+F_ind_stats = reg_mean_ind_lev_df[reg_mean_ind_lev_df.sex=='F'].describe().reset_index()
+M_ind_stats = reg_mean_ind_lev_df[reg_mean_ind_lev_df.sex=='M'].describe().reset_index()
+print(f'Pearson\'s r female / male: mean = {F_ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f} / {M_ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f}, s.d. = {F_ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f} / {M_ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f}; F({r_ind_diff_bet_sex["ddof1"].item()},{r_ind_diff_bet_sex["ddof2"].item()}) = {r_ind_diff_bet_sex["F"].item():.2f}, p = {r_ind_diff_bet_sex["p-unc"].item():.2f}, 2-way ANOVA')
 
-corr_ed_age = pg.corr(reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()['slope'].to_numpy(),
-                               reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()['age'].to_numpy()).reset_index()
+
+corr_ed_age = pg.corr(reg_mean_ind_lev_df['r'].to_numpy(),
+                      reg_mean_ind_lev_df['age'].to_numpy()).reset_index()
 print(f'The model fit is independent of age (r = {corr_ed_age["r"].item():.2f}; p = {corr_ed_age["p-val"].item():.2f}; CI: [{corr_ed_age["CI95%"].item()[0]:.2f}, {corr_ed_age["CI95%"].item()[1]:.2f}])') 
 
-slope_diff_bet_sex = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex',],as_index=False).median(),
-                                        dv='slope', between=['sex'], subject='sid',parametric=False)
-print(f'The model fit is independent of sex (p = {slope_diff_bet_sex["p-unc"].item():.2f}, pairwise unpaired Mann-Whitney test)')
 ```
 
 #### 1C. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
