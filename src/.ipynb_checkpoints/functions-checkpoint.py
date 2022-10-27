@@ -20,11 +20,41 @@ from IPython.display import Image
 import matplotlib.image as mpimg
 
 def remove_ext(nii_file):
+    """
+    Remove the file extension from the file name, like the .nii.gz from compressed nifti files
+
+    Argument:
+        nii_file (file): the filename to remove extension
+
+    Returns:
+        str: filename without extension.
+    """    
     ext = nii_file.split('.')[-1]
     fn = '.'.join(nii_file.split('.')[:-2]) if ext=='gz' else '.'.join(nii_file.split('.')[:-1])
     return fn
 
 def plot_joint(x,y,s=0,x_label='',y_label='', robust=False,xlim=None,ylim=None,return_plot_var=False,p_smash=None,kdeplot=False,truncate=True,xlim0=False,thr_data=False,plot_log=False):
+    """
+    Formatted version of the function sns.jointplot.
+
+    Arguments:
+        x, y (numpy vector/pandas column): data to plot in the respective axis
+        s (float): the scatter's marker size
+        {x,y}_label (str): label for respective axis
+        robust (bool): calculate robust regression
+        {x,y}_lim (pairs of numbers): axis limits
+        return_plot_var (bool): return plot's returned variable
+        p_smash (float): p_smash value
+        kdeplot (bool): plot KDE contours on main the main axis in black
+        truncate (bool): if True, the regression line is bounded by the data limits, otherwise, it extends to the x axis limits
+        xlim0 (bool): set left xlim to 0
+        thr_data (bool): remove outliers based on the median +/- thr_data*MAD rule or the min if thr_data=='min'
+        plot_log (bool): plot the np.log of x & y
+        
+
+    Returns:
+        JointGrid: the jointplot when return_plot_var == True
+    """
     if thr_data:
         x[pd.isna(x)]=x.min()#0
         y[pd.isna(y)]=y.min()#0
@@ -67,6 +97,20 @@ def plot_joint(x,y,s=0,x_label='',y_label='', robust=False,xlim=None,ylim=None,r
         return g
 
 def metric2mmp(df,sel_met,roi_id,median=True,hemi='L',calc_log=False):
+    """
+    Group the dataframe df by the column roi_id corresponding to the MMP parcellation, returning a numpy vector of the selected column sel_met from the hemisphere hemi, filling the missing ROI values with 0 or the minimum value - 1.
+
+    Arguments:
+        df (pandas): dataframe
+        sel_met (str): column with the values of interest
+        roi_id (str): column with the ROI ids for grouping the dataframe
+        median (bool): grouping aggregate by median (True) or mode (False)
+        hemi (string): {"L" | "R"} return the MMP ROIs from the selected hemisphere
+        calc_log (numpy vector): return the np.log() of the extracted vector
+
+    Returns:
+        numpy vector: the sel_met vector from the corresponding hemisphere.
+    """
     avg_vox_vals_mmp = df.copy() #slope_per_roi
     if median:
         avg_vox_vals_mmp = avg_vox_vals_mmp.groupby(roi_id, as_index=False).mean()

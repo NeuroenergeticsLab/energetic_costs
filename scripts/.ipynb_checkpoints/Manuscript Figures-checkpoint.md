@@ -257,7 +257,7 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 ```python
 selected_df = all_ind_vox_vals
 s = 0.1
-selected_site = 'VIE' #options: TUM or VIE
+selected_site = 'TUM' #options: TUM or VIE
 coh0 = 'a1' #options: a1 or b, if the latter (replication cohort TUM), it will ignore the coh1 variable
 coh1 = 'a2' #options: a2
 selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
@@ -296,23 +296,23 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
 ```
 
 ```python
-#if 'reg_ind_lev_df' not in locals():
-reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'variance','slope'])
-for site in list(cohorts_metadata.keys())[:-1]:
-    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
-        cohort = f'{site}.{coh}'
-        for sid in cohorts_metadata[site][coh]['sids']:
-            subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
-            ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
-            ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
-            reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
-
-reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
-            
-reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
-reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
-reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
-reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
+if 'reg_ind_lev_df' not in locals():
+    reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'variance','slope'])
+    for site in list(cohorts_metadata.keys())[:-1]:
+        for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
+            cohort = f'{site}.{coh}'
+            for sid in cohorts_metadata[site][coh]['sids']:
+                subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
+                ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
+                ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
+                reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
+    
+    reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
+                
+    reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
+    reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
+    reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
+    reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
 
 cohort_order = ['TUM.a1','TUM.a2','TUM.b','VIE.a1','VIE.a2']
 coh_colors = {}
@@ -332,31 +332,22 @@ plt.gca().set_xlabel('Pearson correlation')
 
 ## STATS
 ind_stats = reg_ind_lev_df.describe().reset_index()
-variance_diff_bet_cohorts = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median(),dv='variance', between=['cohort'], subject='sid',parametric=False)
-variance_diff_bet_cohorts.loc[(variance_diff_bet_cohorts.A == 'TUM.a1') & (variance_diff_bet_cohorts.B == 'TUM.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['TUM.a1','TUM.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='variance', within=['cohort'], subject='sid',parametric=False).to_numpy()                                                                                                                                          
-variance_diff_bet_cohorts.loc[(variance_diff_bet_cohorts.A == 'VIE.a1') & (variance_diff_bet_cohorts.B == 'VIE.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['VIE.a1','VIE.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='variance', within=['cohort'], subject='sid',parametric=False).to_numpy()
-variance_diff_bet_cohorts['p-corr'] = pg.multicomp(variance_diff_bet_cohorts['p-unc'].to_numpy(),method='fdr_bh')[1]
-variance_diff_bet_cohorts['p-adjust'] = 'fdr_bh'
-print(f'Variance range = {" - ".join(str(val*100) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"variance"].to_list())}; mean = {100*ind_stats.loc[ind_stats["index"]=="mean","variance"].item():.2f}; std = {100*ind_stats.loc[ind_stats["index"]=="std","variance"].item():.2f}; p > {variance_diff_bet_cohorts["p-corr"].min():.2f}, pairwise non-parametric tests FDR corrected') # Mann-Whitney between different cohorts of subjects and Wilcoxon for wihithin subjects cohorts
+reg_mean_ind_lev_df = reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()
+reg_mean_ind_lev_df['cohort'] = reg_mean_ind_lev_df.cohort.str.split('.').str[0]
+reg_mean_ind_lev_df = reg_mean_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()
+r_ind_diff_bet_cohorts = pg.anova(data=reg_mean_ind_lev_df,dv='r', between=['cohort'])
+print(f'Pearson\'s r range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"r"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f}; s.d. = {ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f}; F({r_ind_diff_bet_cohorts["ddof1"].item()},{r_ind_diff_bet_cohorts["ddof2"].item()}) = {r_ind_diff_bet_cohorts["F"].item():.2f}, p = {r_ind_diff_bet_cohorts["p-unc"].item():.2f}, one-way ANOVA')
 
-slope_diff_bet_cohorts = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median(),dv='slope', between=['cohort'], subject='sid',parametric=False)
-slope_diff_bet_cohorts.loc[(slope_diff_bet_cohorts.A == 'TUM.a1') & (slope_diff_bet_cohorts.B == 'TUM.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['TUM.a1','TUM.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='slope', within=['cohort'], subject='sid',parametric=False).to_numpy()                                                                                                                                          
-slope_diff_bet_cohorts.loc[(slope_diff_bet_cohorts.A == 'VIE.a1') & (slope_diff_bet_cohorts.B == 'VIE.a2')] = pg.pairwise_ttests(data=reg_ind_lev_df[reg_ind_lev_df.cohort.isin(['VIE.a1','VIE.a2'])].groupby(['sid','sex','cohort'],as_index=False).median(),
-                                     dv='slope', within=['cohort'], subject='sid',parametric=False).to_numpy()
-slope_diff_bet_cohorts['p-corr'] = pg.multicomp(slope_diff_bet_cohorts['p-unc'].to_numpy(),method='fdr_bh')[1]
-slope_diff_bet_cohorts['p-adjust'] = 'fdr_bh'
-print(f'Slope range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"slope"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","slope"].item():.2f}; std = {ind_stats.loc[ind_stats["index"]=="std","slope"].item():.2f}; p = {slope_diff_bet_cohorts["p-corr"].min():.2f}, pairwise non-parametric tests FDR corrected') # Mann-Whitney between different cohorts of subjects and Wilcoxon for wihithin subjects cohorts
+r_ind_diff_bet_sex = pg.anova(data=reg_mean_ind_lev_df,dv='r', between=['sex'])
+F_ind_stats = reg_mean_ind_lev_df[reg_mean_ind_lev_df.sex=='F'].describe().reset_index()
+M_ind_stats = reg_mean_ind_lev_df[reg_mean_ind_lev_df.sex=='M'].describe().reset_index()
+print(f'Pearson\'s r female / male: mean = {F_ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f} / {M_ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f}, s.d. = {F_ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f} / {M_ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f}; F({r_ind_diff_bet_sex["ddof1"].item()},{r_ind_diff_bet_sex["ddof2"].item()}) = {r_ind_diff_bet_sex["F"].item():.2f}, p = {r_ind_diff_bet_sex["p-unc"].item():.2f}, one-way ANOVA')
 
-corr_ed_age = pg.corr(reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()['slope'].to_numpy(),
-                               reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()['age'].to_numpy()).reset_index()
+
+corr_ed_age = pg.corr(reg_mean_ind_lev_df['r'].to_numpy(),
+                      reg_mean_ind_lev_df['age'].to_numpy()).reset_index()
 print(f'The model fit is independent of age (r = {corr_ed_age["r"].item():.2f}; p = {corr_ed_age["p-val"].item():.2f}; CI: [{corr_ed_age["CI95%"].item()[0]:.2f}, {corr_ed_age["CI95%"].item()[1]:.2f}])') 
 
-slope_diff_bet_sex = pg.pairwise_ttests(data=reg_ind_lev_df.groupby(['sid','sex',],as_index=False).median(),
-                                        dv='slope', between=['sex'], subject='sid',parametric=False)
-print(f'The model fit is independent of sex (p = {slope_diff_bet_sex["p-unc"].item():.2f}, pairwise unpaired Mann-Whitney test)')
 ```
 
 #### 1C. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
@@ -369,7 +360,7 @@ all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
 sel_x_var = x_var if not other_results else other_results
 sel_xlabel = xlabel if not other_results else 'SC strength [Z-score]'
 sel_xlabel = xlabel if other_results != 'std_dynamic_degree_z' else 'std(dynamic DC) [Z-score]'
-sel_sites = list(cohorts_metadata.keys())[:-1] if not dti_results else list(cohorts_metadata.keys())[:1]
+sel_sites = list(cohorts_metadata.keys())[:-1] if not other_results else list(cohorts_metadata.keys())[:1]
 palette_regplot_index = 5 
 for site in sel_sites:
     filtered_index_lists = []
@@ -387,7 +378,7 @@ for site in sel_sites:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
     src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
                                     plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
-                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not dti_results else None,ylim=(10,50) if not dti_results else None,
+                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else None,ylim=(10,50) if not other_results else None,
                                     legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
     palette_regplot_index += 4
    
@@ -396,7 +387,7 @@ for site in sel_sites:
 ***Statistical differences in the variance explained by models adding the dynamic DC and SC***
 
 ```python
-# Run this cell tobe able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
+# Run this cell to be able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
 %reload_ext rpy2.ipython
 avg_roi_vals = all_avg_roi_vals[~(all_avg_roi_vals.cohort.isin(['VIE.a1','VIE.a2']))].groupby('roi_id',as_index=False).median()
 ```
@@ -447,7 +438,7 @@ p_lm_plus_dyndc = float(str(lm_plus_dyndc_comp[5]).split(' ')[-1].replace("\n","
 variance_lm_plus_sc = 100*float(str(base.summary(lm_plus_sc)[8]).split(' ')[1].replace("\n",""))
 p_lm_plus_sc = float(str(lm_plus_sc_comp[5]).split(' ')[-1].replace("\n",""))
 
-print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%, p = {p_lm_plus_dyndc:.2f} ANOVA). In contrast, the model with the strenght of the structural connectivity added, explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%, p = {p_lm_plus_sc:.2f} ANOVA)')
+print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%; F({base.summary(lm_plus_dyndc)[9][1]:n},{base.summary(lm_plus_dyndc)[9][2]:n}) = {base.summary(lm_plus_dyndc)[9][0]:.2f}, p = {p_lm_plus_dyndc:.2f}, one-way ANOVA). the model with the strenght of the structural connectivity added to the model explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%; F({base.summary(lm_plus_sc)[9][1]:n},{base.summary(lm_plus_sc)[9][2]:n}) = {base.summary(lm_plus_sc)[9][0]:.2f}, p = {p_lm_plus_sc}, 2-way ANOVA).')
 
 ```
 
@@ -622,7 +613,10 @@ plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
 
 apes_diff_sign = []
 for ix in range(-1,2):
-    apes_diff_sign += [stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)[1]]
+    apes_diff_ttest = stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)
+    apes_diff_sign += [apes_diff_ttest[1]]
+    if apes_diff_ttest[1]<0.055:
+        print(f'One sample t-test area-{ix} is significantly different from 0 (t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
 apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
 for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
     if apes_diff_sign[ix]<0.055:
@@ -649,7 +643,7 @@ valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_e
 allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
 plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
 
-allometric_model = allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
+allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 ```
 
@@ -950,7 +944,8 @@ all_ind_roi_ed_vals_mat= stats.zscore(all_ind_roi_ed_vals.to_numpy(), axis=0,nan
 all_ind_roi_ed_vals_mat = np.nan_to_num(all_ind_roi_ed_vals_mat)
 
 #PLS
-ed_ext_pet_roi_pls = pyls.behavioral_pls(all_ind_roi_ed_vals_mat,ext_pet_roi_maps_mat,n_perm=1000,n_boot=1000,n_proc=6)
+if 'ed_ext_pet_roi_pls' not in locals():
+    ed_ext_pet_roi_pls = pyls.behavioral_pls(all_ind_roi_ed_vals_mat,ext_pet_roi_maps_mat,n_perm=1000,n_boot=1000,n_proc=6)
 n_sign_comp = (ed_ext_pet_roi_pls.permres.pvals<=0.05).sum()
 print(ed_ext_pet_roi_pls.varexp[:n_sign_comp])
 print(ed_ext_pet_roi_pls.permres.pvals[:n_sign_comp])
@@ -958,10 +953,10 @@ icx = 0 # Selected component
 
 ext_pet_colors = np.repeat(np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])[np.newaxis,:],len(ext_pet_labels),axis=0)
 ext_pet_colors[5:7] = plt.cm.tab20c([6]).flatten()
-ext_pet_colors[12] = plt.cm.tab20c([17]).flatten()
-ext_pet_colors[16] = plt.cm.tab20c([17]).flatten()
+ext_pet_colors[12] = plt.cm.tab20c([6]).flatten() #17
+ext_pet_colors[16] = plt.cm.tab20c([6]).flatten() #17
 ext_pet_colors[17] = plt.cm.tab20c([6]).flatten()
-ext_pet_colors[18] = plt.cm.tab20c([17]).flatten()
+#ext_pet_colors[18] = plt.cm.tab20c([17]).flatten()
 
 fig, axs = plt.subplots(1, 1, figsize=(3, 6))
 ext_pet_colors_mod = ext_pet_colors.copy()
@@ -970,12 +965,20 @@ sorted_idx = np.argsort(ed_ext_pet_roi_pls["y_loadings"][:, icx])#[::-1]
 significance_index = np.zeros(len(ext_pet_labels), dtype=bool)    
 axs.barh(np.arange(len(err)), np.sort(ed_ext_pet_roi_pls["y_loadings"][:, icx]),xerr=err[sorted_idx],color=ext_pet_colors_mod[sorted_idx])
 axs.set_yticks(np.arange(ext_pet_roi_maps.shape[1]-1))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
-axs.set_yticklabels(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
-for patch in  [i for (i, v) in zip(axs.patches, np.isin(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx],['A4B2','MU','5HT4'])) if v]:
-    patch.set(edgecolor='k',linewidth=1.5)
-axs.patches[np.where((np.array(ext_pet_labels)=='mGluR5')[sorted_idx])[0][0]].set(edgecolor=list(plt.cm.Dark2(range(8))[3][:3])+[0.7],linewidth=2)
-axs.patches[np.where((np.array(ext_pet_labels)=='GABAa-bz')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)
-axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)            
+
+for ext_pet_idx in [3,6,14]:
+    ext_pet_labels[ext_pet_idx] = r'$\bf{'+ext_pet_labels[ext_pet_idx]+'}$'
+
+axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
+
+for ext_pet_idx in [1,12,15]:
+    axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
+
+#for patch in  [i for (i, v) in zip(axs.patches, np.isin(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx],['A4B2','MU','5HT4'])) if v]:
+#    patch.set(edgecolor='k',linewidth=1.5)
+#axs.patches[np.where((np.array(ext_pet_labels)=='mGluR5')[sorted_idx])[0][0]].set(edgecolor=list(plt.cm.Dark2(range(8))[3][:3])+[0.7],linewidth=2)
+#axs.patches[np.where((np.array(ext_pet_labels)=='GABAa-bz')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)
+#axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)            
         
 #plt.figure()
 #plot_surf(metric2mmp(pd.DataFrame({'roi_id':valid_roi_ids,'ed_score':ed_ext_pet_roi_pls.x_scores[:,icx]}),'ed_score','roi_id'),
@@ -983,12 +986,42 @@ axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set(
 fig.tight_layout()
 ```
 
-### Supplementary figures
-#### S1.
+```python
+## Karbowski J. BMC Biology 2007
+total_glucose = {'mouse':0.32,'rat':1.52,'squirrel':3.88,'rabbit':7.93,'cat':21.78,'monkey':35.98,'sheep':40.18,'goat':40.09,'baboon':60.40,'human_2007':428.55,
+                }
+total_volume = {'mouse':0.35,'rat':2.26,'squirrel':7.6,'rabbit':11.5,'cat':31.8,'monkey':100,'sheep':114,'goat':117,'baboon':137,'human_2007':1389,
+               }
+allometric_Karbowski_df = pd.DataFrame(total_volume, index=[0]).melt(var_name='species',value_name='volume')
+allometric_Karbowski_df['total_glucose'] = allometric_Karbowski_df['species'].map(total_glucose)
+allometric_Karbowski_df['log(total_glucose)'] = np.log10(allometric_Karbowski_df['total_glucose'])
+allometric_Karbowski_df['log(volume)'] = np.log10(allometric_Karbowski_df['volume'])
+plt.figure()
+plt.gca().set(xlim=(-1,3.5))#(-2,5)
+sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,truncate=False,scatter_kws={'color':'gray'},line_kws={'color':'k','linewidth':0.5})
+plt.gca().plot(allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2007']),'log(volume)'],
+               allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2007']),'log(total_glucose)'],
+              '.g',markersize=15,alpha=.8,label='Human (Karbowski 2007)')
+plt.gca().plot(np.log10(581),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(volume)'],
+               np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(total_glucose)'],
+              '.m',markersize=15,alpha=.8,label='Human (our data, only GM volume)')
+plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism [umol/min]')
+plt.legend(loc='upper left', bbox_to_anchor=(-0.05, 1.3))
+
+allometric_fit_params_Karbowski,_ = curve_fit(src.functions.allometric_fit, allometric_Karbowski_df['volume'],allometric_Karbowski_df['total_glucose'])
+allometric_model = r'$\bf{glucose\ metabolism\ \textasciitilde\ brain\ volume^{%0.2f}}$' % (allometric_fit_params_Karbowski[0])
+plt.gca().text(plt.gca().get_xlim()[0]-0.25,plt.gca().get_ylim()[0]-1.25, allometric_model, ha='left',va='top', color='k')
+
+allometric_Karbowski_df
+
+```
 
 ```python
 
 ```
+
+### Supplementary figures
+#### S1.
 
 ```python
 
