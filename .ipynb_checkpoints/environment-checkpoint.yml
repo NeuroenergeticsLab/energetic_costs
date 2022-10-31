@@ -9,16 +9,16 @@ dependencies:
   - jupytext
   - matplotlib=3.3.2
   - nilearn
-  - seaborn
+  - seaborn=0.11.1
   - pingouin
   - nipype
-  - numpy=1.20.1
+  - numpy
   - pandas=1.4.1
   - openpyxl
   - twine=3.1.1
-  - nibabel=3.1.0
-  - scipy=1.4.1
-  - scikit-learn=1.0.2
+  - nibabel
+  - scipy
+  - scikit-learn
   - nodejs
   - ptitprince
   - pip
@@ -32,3 +32,4 @@ dependencies:
     - wordcloud
     - joypy==0.2.4
     - rpy2==3.5.4
+    - vtk==9.1.0

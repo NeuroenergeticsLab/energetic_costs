@@ -6,12 +6,22 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.13.7
+      jupytext_version: 1.14.0
   kernelspec:
-    display_name: energy_density_env (ed)
+    display_name: Python 3 (ipykernel)
     language: python
-    name: ed
+    name: python3
 ---
+
+#### Installation of libraries not available as packages (Run only the first time you open this notebook)
+
+```python
+!git clone https://github.com/MICA-MNI/ENIGMA.git ._ENIGMA;cd ._ENIGMA;{sys.prefix}/bin/python setup.py install;rm -rf ../._ENIGMA
+!git clone https://github.com/rmarkello/pyls.git ._pyls;cd ._pyls;{sys.prefix}/bin/python setup.py install;rm -rf ../._pyls
+!{sys.prefix}/bin/pip install -e ../
+#Restart the kernel after installing
+
+```
 
 ```python
 from matplotlib import pyplot as plt
@@ -19,7 +29,6 @@ from matplotlib import pyplot as plt
 from matplotlib.colors import ListedColormap
 from matplotlib import colorbar
 import matplotlib.colors as clrs
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 import warnings
 warnings.filterwarnings('ignore')
@@ -50,7 +59,6 @@ from ptitprince import half_violinplot
 sns.set_context("notebook", font_scale=1.5)
 sns.set_style("whitegrid")
 
-#!{sys.prefix}/bin/pip install -e ../
 import src.functions
 %load_ext autoreload
 %autoreload 2
