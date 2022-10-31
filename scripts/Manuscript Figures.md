@@ -996,9 +996,9 @@ fig.tight_layout()
 
 ```python
 ## Karbowski J. BMC Biology 2007
-total_glucose = {'mouse':0.32,'rat':1.52,'squirrel':3.88,'rabbit':7.93,'cat':21.78,'monkey':35.98,'sheep':40.18,'goat':40.09,'baboon':60.40,'human_2007':428.55,
+total_glucose = {'mouse':0.32,'rat':1.52,'squirrel':3.88,'rabbit':7.93,'cat':21.78,'monkey':35.98,'sheep':40.18,'goat':40.09,'baboon':60.40,'Human (Karbowski 2007)':428.55,
                 }
-total_volume = {'mouse':0.35,'rat':2.26,'squirrel':7.6,'rabbit':11.5,'cat':31.8,'monkey':100,'sheep':114,'goat':117,'baboon':137,'human_2007':1389,
+total_volume = {'mouse':0.35,'rat':2.26,'squirrel':7.6,'rabbit':11.5,'cat':31.8,'monkey':100,'sheep':114,'goat':117,'baboon':137,'Human (Karbowski 2007)':1389,
                }
 allometric_Karbowski_df = pd.DataFrame(total_volume, index=[0]).melt(var_name='species',value_name='volume')
 allometric_Karbowski_df['total_glucose'] = allometric_Karbowski_df['species'].map(total_glucose)
@@ -1006,20 +1006,29 @@ allometric_Karbowski_df['log(total_glucose)'] = np.log10(allometric_Karbowski_df
 allometric_Karbowski_df['log(volume)'] = np.log10(allometric_Karbowski_df['volume'])
 plt.figure()
 plt.gca().set(xlim=(-1,3.5))#(-2,5)
-sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,truncate=False,scatter_kws={'color':'gray'},line_kws={'color':'k','linewidth':0.5})
-plt.gca().plot(allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2007']),'log(volume)'],
-               allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2007']),'log(total_glucose)'],
+sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,truncate=False,scatter_kws={'color':'gray','edgecolors':'k'},line_kws={'color':'k','linewidth':0.5})
+plt.gca().plot(allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(volume)'],
+               allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(total_glucose)'],
               '.g',markersize=15,alpha=.8,label='Human (Karbowski 2007)')
 plt.gca().plot(np.log10(581),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(volume)'],
                np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(total_glucose)'],
-              '.m',markersize=15,alpha=.8,label='Human (our data, only GM volume)')
-plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism [umol/min]')
-plt.legend(loc='upper left', bbox_to_anchor=(-0.05, 1.3))
+              '.m',markersize=15,alpha=.8,label='Human (our data,only GM volume)')
+#             markeredgewidth=1.5, markeredgecolor=(r, g, b, 1)
+plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism\n[umol/min]')
+#plt.legend(loc='upper left', bbox_to_anchor=(-0.05, 1.3))
 
 allometric_fit_params_Karbowski,_ = curve_fit(src.functions.allometric_fit, allometric_Karbowski_df['volume'],allometric_Karbowski_df['total_glucose'])
 allometric_model = r'$\bf{glucose\ metabolism\ \textasciitilde\ brain\ volume^{%0.2f}}$' % (allometric_fit_params_Karbowski[0])
 plt.gca().text(plt.gca().get_xlim()[0]-0.25,plt.gca().get_ylim()[0]-1.25, allometric_model, ha='left',va='top', color='k')
 
+for index, row in allometric_Karbowski_df.iterrows():
+    if row['species'] in (['baboon','goat','Human (Karbowski 2007)']):
+        plt.gca().annotate(row['species'], (row['log(volume)']-0.1, row['log(total_glucose)']),fontsize=10,ha = 'right')
+    elif row['species']=='monkey':
+        plt.gca().annotate(row['species'], (row['log(volume)']+0.1, row['log(total_glucose)']-0.2),fontsize=10)
+    else:
+        plt.gca().annotate(row['species'], (row['log(volume)']+0.1, row['log(total_glucose)']),fontsize=10)
+plt.gca().annotate('Human\n(our data,\nGM volume)', (np.log10(581)-0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.75),fontsize=10)
 allometric_Karbowski_df
 
 ```
