@@ -18,6 +18,7 @@ jupyter:
 ```python
 !git clone https://github.com/MICA-MNI/ENIGMA.git ._ENIGMA;cd ._ENIGMA;{sys.prefix}/bin/python setup.py install;rm -rf ../._ENIGMA
 !git clone https://github.com/rmarkello/pyls.git ._pyls;cd ._pyls;{sys.prefix}/bin/python setup.py install;rm -rf ../._pyls
+import sys
 !{sys.prefix}/bin/pip install -e ../
 #Restart the kernel after installing
 
@@ -51,7 +52,6 @@ import pyls
 
 import enigmatoolbox
 from enigmatoolbox.utils.parcellation import surface_to_parcel,parcel_to_surface
-from enigmatoolbox.datasets import fetch_ahba
 
 #BrainSmash
 from brainsmash.mapgen.base import Base 
@@ -74,8 +74,9 @@ import src.functions
 <!-- #endregion -->
 
 ```python
-os.environ["PATH"]+=':/home/tumnic/gcastrillon/workbench_v1.4.2/bin_linux64' if sys.platform!='darwin' else ':/Applications/workbench_v1.4.2/bin_macosx64'
-os.environ["QT_QPA_PLATFORM"]='offscreen'
+if sys.platform=='darwin': 
+    os.environ["PATH"]+=':/Applications/workbench_v1.4.2/bin_macosx64'
+    os.environ["QT_QPA_PLATFORM"]='offscreen'
 
 os.environ["OUTDATED_IGNORE"]='1'
 #os.environ["TEMP"]=os.path.join(os.environ["HOME"],'tmp')
@@ -138,6 +139,7 @@ xlabel='DC [Z-score]' if not len(x_label) else x_label
 ylabel='CMRglc [umol/(min*100g)]' if y_var == pet_metric else xlabel
 xlabel=xlabel if y_var == pet_metric else 'CMRglc [umol/(min*100g)]'
 img_res_dpi = 150
+generate_surf = False if (('BINDER_SERVICE_HOST' in os.environ.keys()) & ('workbench' in os.environ["PATH"])) else True
 ```
 
 #### Atlas
@@ -234,10 +236,10 @@ example_ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==cohorts_metadata[
 ## Surface representation
 src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,y_var,'roi_id'),os.path.join(results_dir,'figures',f'fig1A_surf-{y_var}'),
           cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'cividis')(np.arange(0,getattr(plt.cm,'cividis').N))))),
-          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual CMRglc')
+          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual CMRglc',generate_surf=generate_surf)
 src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,x_var,'roi_id'),os.path.join(results_dir,'figures',f'fig1A_surf-{x_var}'),
           cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'viridis')(np.arange(0,getattr(plt.cm,'viridis').N))))),
-          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual DC')
+          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual DC',generate_surf=generate_surf)
 
 
 ## Individual voxelwise scatterplot
@@ -479,7 +481,7 @@ plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
 ```python
 #all_avg_vox_vals['energy_density_perc'] = 100*(((all_avg_vox_vals[y_var]+all_avg_vox_vals['energy_density'])/all_avg_vox_vals[y_var])-1)
 src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==f'{reference_site}.{reference_cohort}'],'energy_density','roi_id'),os.path.join(results_dir,'figures',f'fig2A_surf_delete-{reference_site}.{reference_cohort}'),
-                        cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title='energy density exploratory cohort')
+                        cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title='energy density exploratory cohort',generate_surf=generate_surf)
 sd_smash_corr_bet_coh_df = pd.DataFrame({})
 sd_smash_corr_bet_coh_palette = {}
 for cohort in cohort_order[1:]:
@@ -488,7 +490,7 @@ for cohort in cohort_order[1:]:
     sd_smash_corr_bet_coh_df[f'{cohort}={r_param:.2f}'] = cohorts_metadata['all']['smash_sd_{}-{}'.format(f'{reference_site}.{reference_cohort}',cohort)]
     sd_smash_corr_bet_coh_palette[f'{cohort}={r_param:.2f}'] = cohorts_metadata[cohort.split('.')[0]][cohort.split('.')[1]]['color']
     src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==cohort],'energy_density','roi_id'),os.path.join(results_dir,'figures',f'fig2B_surf_delete-{cohort}'),
-                            cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'energy density {cohort}')
+                            cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'energy density {cohort}',generate_surf=generate_surf)
     
 plt.figure(figsize=(5,3))
 g = sns.kdeplot(data=sd_smash_corr_bet_coh_df,palette=sd_smash_corr_bet_coh_palette,legend=True)
@@ -525,7 +527,7 @@ sns.scatterplot(x=x_var, y=y_var, hue='energy_density',data=avg_vox_vals_with_gx
 avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id')
 plt.figure()
 src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=True,vlow=5,vhigh=95,fig_title='average energy density across cohorts')
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='average energy density across cohorts',generate_surf=generate_surf)
 
 
 
@@ -792,7 +794,7 @@ plt.gca().scatter(bbl_roi_skew[[lskew,hskew]],avg_roi_ed_vals[[lskew,hskew]],s=3
 #### 4C. Energy density relationship with transcription levels for signaling
 
 ```python
-ahba_gene_expression = fetch_ahba(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv'))
+ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
 stab_genesets = ['STAB_excitatory','STAB_interneuron','STAB_astrocytes','STAB_olygodendrocytes']
 stab_geneset_clusters = {}
 stab_geneset_clusters['STAB_excitatory'] = ['ExN1_4','ExN1a','ExN1b','ExN1c','ExN2','ExN3','ExN4','ExN5','ExN6a','ExN6b','ExN8','ExN9','ExN10','ExN11']
@@ -1107,7 +1109,7 @@ for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labe
 plt.figure()
 src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
                         os.path.join(results_dir,'figures',f'fig5C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score')
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=generate_surf)
 
 ```
 

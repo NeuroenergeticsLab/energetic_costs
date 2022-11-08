@@ -205,7 +205,7 @@ def plot_rnd_dist(surr_corrs,r_param,p_non_param,ax,xlabel='',ylabel='',xlim=[-0
     plt.gca().grid(False,axis='x')
     plt.gca().set(xlabel='Correlation',ylabel='Density')
 
-def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False,fig_title=''):
+def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False,fig_title='',generate_surf=True):
     if show_colorbar:
         w, h = constants.LANDSCAPE_SIZE
         aspect = w / h
@@ -213,14 +213,16 @@ def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False
         ax = fig.add_axes([0.075, 0, 0.85, 0.85])
         cax = fig.add_axes([0.44, 0.02, 0.12, 0.07])
     #print(constants.DLABEL_FILE)
-    pscalar(
-        file_out=met_fn,
-        pscalars=met,
-        orientation='landscape',
-        hemisphere='left',
-        vrange=(np.nanpercentile(met, vlow), np.nanpercentile(met, vhigh)),
-        cmap=cmap
-    )
+    
+    if generate_surf:
+        pscalar(
+            file_out=met_fn,
+            pscalars=met,
+            orientation='landscape',
+            hemisphere='left',
+            vrange=(np.nanpercentile(met, vlow), np.nanpercentile(met, vhigh)),
+            cmap=cmap
+        )
     img = mpimg.imread(met_fn+'.png')
     cur_ax = ax if ax else plt
     cur_ax.imshow(img)
