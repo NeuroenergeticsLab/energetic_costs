@@ -23,16 +23,20 @@ jupyter:
 
 ```
 
+#### Libraries loading
+
 ```python
+import warnings
+warnings.filterwarnings('ignore')
+warnings.simplefilter('ignore')
+
 from matplotlib import pyplot as plt
 %matplotlib inline
 from matplotlib.colors import ListedColormap
 from matplotlib import colorbar
 import matplotlib.colors as clrs
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-import warnings
-warnings.filterwarnings('ignore')
-warnings.simplefilter('ignore')
 import os,glob,pickle,re,sys,json
 import pandas as pd
 import numpy as np
@@ -70,7 +74,7 @@ import src.functions
 <!-- #endregion -->
 
 ```python
-os.environ["PATH"]+=':/home/tumnic/gcastrillon/workbench_v1.4.2/bin_linux64'
+os.environ["PATH"]+=':/home/tumnic/gcastrillon/workbench_v1.4.2/bin_linux64' if sys.platform!='darwin' else ':/Applications/workbench_v1.4.2/bin_macosx64'
 os.environ["QT_QPA_PLATFORM"]='offscreen'
 
 os.environ["OUTDATED_IGNORE"]='1'
@@ -133,6 +137,7 @@ else:
 xlabel='DC [Z-score]' if not len(x_label) else x_label
 ylabel='CMRglc [umol/(min*100g)]' if y_var == pet_metric else xlabel
 xlabel=xlabel if y_var == pet_metric else 'CMRglc [umol/(min*100g)]'
+img_res_dpi = 150
 ```
 
 #### Atlas
@@ -227,13 +232,13 @@ example_sid = 20
 example_ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==cohorts_metadata[reference_site][reference_cohort]['sub_pref'] % example_sid) & (all_ind_vox_vals.cohort==f'{reference_site}.{reference_cohort}')].copy()
 
 ## Surface representation
-#src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,y_var,'roi_id')[1:],os.path.join(results_dir,'figures',f'fig1A_surf-{y_var}'),
-#          cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'cividis')(np.arange(0,getattr(plt.cm,'cividis').N))))),
-#          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual CMRglc')
-#src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,x_var,'roi_id')[1:],os.path.join(results_dir,'figures',f'fig1A_surf-{x_var}'),
-#          cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'viridis')(np.arange(0,getattr(plt.cm,'viridis').N))))),
-#          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual DC')
-#
+src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,y_var,'roi_id'),os.path.join(results_dir,'figures',f'fig1A_surf-{y_var}'),
+          cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'cividis')(np.arange(0,getattr(plt.cm,'cividis').N))))),
+          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual CMRglc')
+src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,x_var,'roi_id'),os.path.join(results_dir,'figures',f'fig1A_surf-{x_var}'),
+          cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'viridis')(np.arange(0,getattr(plt.cm,'viridis').N))))),
+          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual DC')
+
 
 ## Individual voxelwise scatterplot
 r_vox_param,_=stats.pearsonr(example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),x_var],example_ind_vox_vals.loc[example_ind_vox_vals[conn_metric].notnull(),y_var])
@@ -472,6 +477,9 @@ plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
 #### 2B. Stability
 
 ```python
+#all_avg_vox_vals['energy_density_perc'] = 100*(((all_avg_vox_vals[y_var]+all_avg_vox_vals['energy_density'])/all_avg_vox_vals[y_var])-1)
+src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==f'{reference_site}.{reference_cohort}'],'energy_density','roi_id'),os.path.join(results_dir,'figures',f'fig2A_surf_delete-{reference_site}.{reference_cohort}'),
+                        cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title='energy density exploratory cohort')
 sd_smash_corr_bet_coh_df = pd.DataFrame({})
 sd_smash_corr_bet_coh_palette = {}
 for cohort in cohort_order[1:]:
@@ -479,6 +487,9 @@ for cohort in cohort_order[1:]:
                                    all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==cohort,'energy_density'])
     sd_smash_corr_bet_coh_df[f'{cohort}={r_param:.2f}'] = cohorts_metadata['all']['smash_sd_{}-{}'.format(f'{reference_site}.{reference_cohort}',cohort)]
     sd_smash_corr_bet_coh_palette[f'{cohort}={r_param:.2f}'] = cohorts_metadata[cohort.split('.')[0]][cohort.split('.')[1]]['color']
+    src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==cohort],'energy_density','roi_id'),os.path.join(results_dir,'figures',f'fig2B_surf_delete-{cohort}'),
+                            cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'energy density {cohort}')
+    
 plt.figure(figsize=(5,3))
 g = sns.kdeplot(data=sd_smash_corr_bet_coh_df,palette=sd_smash_corr_bet_coh_palette,legend=True)
 legend_handles = g.get_legend().legendHandles #get_legend_handles_labels()
@@ -509,6 +520,14 @@ g = src.functions.plot_joint(avg_vox_vals_with_gx_mask[x_var],avg_vox_vals_with_
 sns.scatterplot(x=x_var, y=y_var, hue='energy_density',data=avg_vox_vals_with_gx_mask,
                 linewidth=0,s=1.5,legend=False,palette=sel_cm,ax=g.ax_joint,
                 vmin=avg_vox_vals_with_gx_mask.energy_density.quantile(0.25),vmax=avg_vox_vals_with_gx_mask.energy_density.quantile(0.75))
+
+## Average ROI values across subjects from all cohorts for visualization purposes and comparisson with external data
+avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id')
+plt.figure()
+src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='average energy density across cohorts')
+
+
 
 ## One sample t-test statistics across subjects
 gx_gm_mask_fn = os.path.join(root_dir,'gx_between-cohort_gm-mask_25perc_mni-3mm.nii.gz')
@@ -636,12 +655,58 @@ for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
 #### 3C. Allometric brain expansion
 
 ```python
+## Karbowski J. BMC Biology 2007
+total_glucose = {'mouse':0.32,'rat':1.52,'squirrel':3.88,'rabbit':7.93,'cat':21.78,'monkey':35.98,'sheep':40.18,'goat':40.09,'baboon':60.40,'Human (Karbowski 2007, whole brain)':428.55,
+                }
+total_volume = {'mouse':0.35,'rat':2.26,'squirrel':7.6,'rabbit':11.5,'cat':31.8,'monkey':100,'sheep':114,'goat':117,'baboon':137,'Human (Karbowski 2007, whole brain)':1389,
+               }
+scatter_border_colors = ['k' for ix in range(len(total_glucose)-1)] + [plt.cm.tab20c(range(20))[4]]
+scatter_border_widths = [1 for ix in range(len(total_glucose)-1)] + [2]
+scatter_border_colors[5] = plt.cm.tab20c(range(20))[8]
+scatter_border_colors[8] = plt.cm.tab20c(range(20))[8]
+scatter_border_widths[5] = 2
+scatter_border_widths[8] = 2
+allometric_Karbowski_df = pd.DataFrame(total_volume, index=[0]).melt(var_name='species',value_name='volume')
+allometric_Karbowski_df['total_glucose'] = allometric_Karbowski_df['species'].map(total_glucose)
+allometric_Karbowski_df['log(total_glucose)'] = np.log10(allometric_Karbowski_df['total_glucose'])
+allometric_Karbowski_df['log(volume)'] = np.log10(allometric_Karbowski_df['volume'])
+plt.figure(dpi=img_res_dpi)
+plt.gca().set(xlim=(-1,3.5))#(-2,5)
+sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,truncate=False,scatter_kws={'color':'gray','edgecolors':scatter_border_colors,'linewidth':scatter_border_widths},line_kws={'color':'k','linewidth':0.5})
+#plt.gca().plot(allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(volume)'],
+#               allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(total_glucose)'],
+#              '.g',markersize=15,alpha=.8,label='Human (Karbowski 2007)')
+plt.gca().plot(np.log10(581),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(volume)'],
+               np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(total_glucose)'],
+              '.',color=plt.cm.tab20c(range(20))[4],markersize=12,label='Human (our data,only GM volume)')
+#             markeredgewidth=1.5, markeredgecolor=(r, g, b, 1)
+plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism\n[umol/min]')
+#plt.legend(loc='upper left', bbox_to_anchor=(-0.05, 1.3))
+
+allometric_fit_params_Karbowski,_ = curve_fit(src.functions.allometric_fit, allometric_Karbowski_df['volume'],allometric_Karbowski_df['total_glucose'])
+allometric_model = r'$\bf{glucose\ metabolism\ \textasciitilde\ brain\ volume^{%0.2f}}$' % (allometric_fit_params_Karbowski[0])
+plt.gca().text(plt.gca().get_xlim()[0]-0.25,plt.gca().get_ylim()[0]-1.25, allometric_model, ha='left',va='top', color='k')
+
+for index, row in allometric_Karbowski_df.iterrows():
+    if row['species'] in (['baboon','goat','cat','Human (Karbowski 2007, whole brain)']):
+        #plt.gca().annotate(row['species'], (row['log(volume)']-0.1, row['log(total_glucose)']),fontsize=10,ha = 'right')
+        plt.gca().annotate(row['species'], (row['log(volume)']-0.125, row['log(total_glucose)']-0.05),fontsize=14, ha='right')
+    elif row['species']=='monkey':
+        #plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.2),fontsize=14)
+        plt.gca().annotate(row['species'], (row['log(volume)'], row['log(total_glucose)']-0.25),fontsize=14, ha='center', va="bottom")
+    else:
+        plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.05),fontsize=14)
+plt.gca().annotate('Human\n(our data,\nGM only)', (np.log10(581)+0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.6),fontsize=14)
+allometric_Karbowski_df
+
+```
+
+```python
 chimp2human_expansion = []
 for _, h in enumerate(['lh', 'rh']):
     chimp2human_expansion = np.append(chimp2human_expansion, nib.load(os.path.join(root_dir,'external',f'Wei2019/{h}.32k.chimp2humanF.smoothed15.shape.gii')).darrays[0].data)
 chimp2human_expansion = surface_to_parcel(chimp2human_expansion,'glasser_360_conte69')[1:]
-avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id')
-
+plt.figure(dpi=img_res_dpi)
 src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_allometric_ed-chimp2humanexpansion.png'),
            l=5,u=95,n_mad='min',ylabel='Energy density\n[umol/(min*100g)]', xlabel='Brain expansion [a.u.]',p_uthr=1,plot=True,
            cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=False,plot_surface=False,x_surr_corrs=cohorts_metadata['all']['smash_sd_{}-{}'.format(x_var,y_var)],
@@ -651,8 +716,11 @@ valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_e
 allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
 plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
 
-allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
+#allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
+allometric_model = r'$\bf{energy\ density\ \textasciitilde\ brain\ expansion^{%0.2f}}$' % (allometric_fit_params[0])
 plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
+
+
 ```
 
 <!-- #region tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
@@ -825,7 +893,7 @@ clrs_bar = []
 for ix in range(go_cell_comps.shape[0]):
     clrs_bar+=[extended_cm[cix]]
     cix=cix+16 if cix!=81 else cix+16*6  
-fig, ax = plt.subplots(figsize=(0.25,5))
+fig, ax = plt.subplots(figsize=(0.25,5),dpi=300)
 cb = colorbar.ColorbarBase(ax, cmap=ListedColormap(clrs_bar), orientation = 'vertical',ticks=np.arange(0.05,1,0.1))
 go_cell_comps_tickl = go_cell_comps.Description.to_list()
 cb.ax.set_yticklabels(go_cell_comps_tickl) 
@@ -834,8 +902,11 @@ for yix,ytickl in enumerate(cb.ax.get_yticklabels()):
     ytickl.set_fontsize(10+yix+1)
 cb.ax.text(-1.5, 0.05, go_cell_comps.loc[0,"Enrichment"],color=clrs_bar[0], transform=cb.ax.transAxes, va='top', ha='center')
 cb.ax.text(-1.5, 0.95, go_cell_comps.loc[go_cell_comps.shape[0]-1,"Enrichment"],color=clrs_bar[-1], transform=cb.ax.transAxes, va='bottom', ha='center')
-cb.ax.set_title( r'$\bf{Enrichment}$ Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
+cb.ax.set_title( 'Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
+#cb.ax.set_title( r'$\bf{Enrichment}$ Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
 
+cb.ax.set_ylabel('Enrichment', rotation=90)
+cb.ax.yaxis.set_label_position('left')
 ```
 
 #### 5C. GO: molecular functions
@@ -850,6 +921,7 @@ go_mol_funcs['sorted_id'] = go_mol_funcs['id'].map(go_mol_funcs_sort_order)
 go_mol_funcs.loc[go_mol_funcs.Description=='molecular transducer activity','Description'] = r'$\bf{receptor\ activity}$'+'\nmolecular transducer activity'
 go_mol_funcs.loc[go_mol_funcs.Description=='voltage-gated ion channel activity','Description'] = r'$\bf{transporter\ activity}$'+'\nvoltage-gated ion channel activity'
 go_mol_funcs = go_mol_funcs.sort_values(by='sorted_id',ignore_index=True,ascending=False)
+plt.figure(dpi=300)
 g = sns.relplot(data=go_mol_funcs, x="-log10(adjusted p-value)", y="sorted_id", hue="Enrichment",size="Number of genes",palette=ListedColormap(extended_cm[20:236]),sizes=(150,400))
 plt.gca().set_yticks(go_mol_funcs.sorted_id.to_list())
 plt.gca().set_yticklabels(go_mol_funcs.Description.to_list())
@@ -995,46 +1067,70 @@ fig.tight_layout()
 ```
 
 ```python
-## Karbowski J. BMC Biology 2007
-total_glucose = {'mouse':0.32,'rat':1.52,'squirrel':3.88,'rabbit':7.93,'cat':21.78,'monkey':35.98,'sheep':40.18,'goat':40.09,'baboon':60.40,'Human (Karbowski 2007)':428.55,
-                }
-total_volume = {'mouse':0.35,'rat':2.26,'squirrel':7.6,'rabbit':11.5,'cat':31.8,'monkey':100,'sheep':114,'goat':117,'baboon':137,'Human (Karbowski 2007)':1389,
-               }
-allometric_Karbowski_df = pd.DataFrame(total_volume, index=[0]).melt(var_name='species',value_name='volume')
-allometric_Karbowski_df['total_glucose'] = allometric_Karbowski_df['species'].map(total_glucose)
-allometric_Karbowski_df['log(total_glucose)'] = np.log10(allometric_Karbowski_df['total_glucose'])
-allometric_Karbowski_df['log(volume)'] = np.log10(allometric_Karbowski_df['volume'])
+ed_vox_df = pd.read_csv(os.path.join(root_dir,'individual_all-cohorts_vox_gx-mask_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
+ed_vox_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
+ext_pet_df = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen2021_19-pet-tracers_vox.csv'))
+ext_pet_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
+ext_pet_labels = ext_pet_df.columns[1:-1].to_list()
+#PLS
+if 'ed_ext_pet_vox_pls' not in locals():
+    ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df.to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=6)
+n_vox_sign_comp = (ed_ext_pet_vox_pls.permres.pvals<=0.05).sum()
+print(ed_ext_pet_vox_pls.varexp[:n_vox_sign_comp])
+print(ed_ext_pet_vox_pls.permres.pvals[:n_vox_sign_comp])
+
+icx = 0 # Selected component
+
+ext_pet_colors = np.repeat(np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])[np.newaxis,:],len(ext_pet_labels),axis=0)
+ext_pet_colors[5:7] = plt.cm.tab20c([6]).flatten()
+ext_pet_colors[12] = plt.cm.tab20c([6]).flatten() #17
+ext_pet_colors[16] = plt.cm.tab20c([6]).flatten() #17
+ext_pet_colors[17] = plt.cm.tab20c([6]).flatten()
+#ext_pet_colors[18] = plt.cm.tab20c([17]).flatten()
+
+fig, axs = plt.subplots(1, 1, figsize=(2.5, 6))
+ext_pet_colors_mod = ext_pet_colors.copy()
+err = (ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 1] - ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 0]) / 2
+sorted_idx = np.argsort(ed_ext_pet_vox_pls["y_loadings"][:, icx])#[::-1] 
+significance_index = np.zeros(len(ext_pet_labels), dtype=bool)    
+axs.barh(np.arange(len(err)), np.sort(ed_ext_pet_vox_pls["y_loadings"][:, icx]),xerr=err[sorted_idx],color=ext_pet_colors_mod[sorted_idx])
+axs.set_yticks(np.arange(len(ed_ext_pet_vox_pls.y_loadings)))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
+
+for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(ext_pet_labels) if ext_pet_label in ['5HT4','A4B2','MU']]:
+    ext_pet_labels[ext_pet_idx] = r'$\bf{'+ext_pet_labels[ext_pet_idx]+'}$'
+
+axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
+
+for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labels)[sorted_idx]) if ext_pet_label in ['NMDA','mGluR5','GABAa-bz']]:
+    axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
+
 plt.figure()
-plt.gca().set(xlim=(-1,3.5))#(-2,5)
-sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,truncate=False,scatter_kws={'color':'gray','edgecolors':'k'},line_kws={'color':'k','linewidth':0.5})
-plt.gca().plot(allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(volume)'],
-               allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(total_glucose)'],
-              '.g',markersize=15,alpha=.8,label='Human (Karbowski 2007)')
-plt.gca().plot(np.log10(581),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(volume)'],
-               np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(total_glucose)'],
-              '.m',markersize=15,alpha=.8,label='Human (our data,only GM volume)')
-#             markeredgewidth=1.5, markeredgecolor=(r, g, b, 1)
-plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism\n[umol/min]')
-#plt.legend(loc='upper left', bbox_to_anchor=(-0.05, 1.3))
-
-allometric_fit_params_Karbowski,_ = curve_fit(src.functions.allometric_fit, allometric_Karbowski_df['volume'],allometric_Karbowski_df['total_glucose'])
-allometric_model = r'$\bf{glucose\ metabolism\ \textasciitilde\ brain\ volume^{%0.2f}}$' % (allometric_fit_params_Karbowski[0])
-plt.gca().text(plt.gca().get_xlim()[0]-0.25,plt.gca().get_ylim()[0]-1.25, allometric_model, ha='left',va='top', color='k')
-
-for index, row in allometric_Karbowski_df.iterrows():
-    if row['species'] in (['baboon','goat','Human (Karbowski 2007)']):
-        plt.gca().annotate(row['species'], (row['log(volume)']-0.1, row['log(total_glucose)']),fontsize=10,ha = 'right')
-    elif row['species']=='monkey':
-        plt.gca().annotate(row['species'], (row['log(volume)']+0.1, row['log(total_glucose)']-0.2),fontsize=10)
-    else:
-        plt.gca().annotate(row['species'], (row['log(volume)']+0.1, row['log(total_glucose)']),fontsize=10)
-plt.gca().annotate('Human\n(our data,\nGM volume)', (np.log10(581)-0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.75),fontsize=10)
-allometric_Karbowski_df
+src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
+                        os.path.join(results_dir,'figures',f'fig5C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score')
 
 ```
 
 ```python
-
+neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-xscore0_pls-median_cohorts-all_vox_nsubj-30_{conn_metric}-{dc_type}_v1.0.csv'))
+neurosynth_order = neurosynth_masks_df[neurosynth_masks_df.ext_pet_vox_pls_0!=0.0].groupby('domain', as_index=False).median().sort_values(by='ext_pet_vox_pls_0',ignore_index=True)
+neurosynth_order['sorted_domain'] = neurosynth_order.index.astype(str).str.zfill(2)+'-'+neurosynth_order.domain
+sorted_domain_map = dict(zip(neurosynth_order['domain'],neurosynth_order['sorted_domain']))
+neurosynth_masks_df['sorted_domain'] = neurosynth_masks_df['domain'].map(sorted_domain_map)
+joypy.joyplot(
+    neurosynth_masks_df,#[neurosynth_masks_df.signal_density!=0.0],#[neurosynth_masks_df.inefficiency!=0.0],
+    by="sorted_domain",
+    column="ext_pet_vox_pls_0",#figsize=(5,8),
+    colormap=plt.cm.RdBu_r,
+    alpha=0.75,
+    figsize=(7,8),
+    labels=list(neurosynth_masks_df.sort_values(by='sorted_domain',ignore_index=True)['domain'].unique()),
+    #fade=True
+)#,overlap=3)#,x_range=[0,110])
+plt.gca().set_xlim([-5,5])
+plt.gca().set_xlabel('External PET maps\n1st PLS score [a.u.]')
+for axx in plt.gcf().get_axes()[:-1]:
+    axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
 ```
 
 ### Supplementary figures
