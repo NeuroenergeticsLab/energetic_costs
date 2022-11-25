@@ -139,7 +139,7 @@ xlabel='DC [Z-score]' if not len(x_label) else x_label
 ylabel='CMRglc [umol/(min*100g)]' if y_var == pet_metric else xlabel
 xlabel=xlabel if y_var == pet_metric else 'CMRglc [umol/(min*100g)]'
 img_res_dpi = 150
-generate_surf = False if (('BINDER_SERVICE_HOST' in os.environ.keys()) & ('workbench' in os.environ["PATH"])) else True
+generate_surf = False if (('BINDER_SERVICE_HOST' in os.environ.keys()) & ('workbench' not in os.environ["PATH"])) else True
 ```
 
 #### Atlas
@@ -352,6 +352,11 @@ reg_mean_ind_lev_df['cohort'] = reg_mean_ind_lev_df.cohort.str.split('.').str[0]
 reg_mean_ind_lev_df = reg_mean_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()
 r_ind_diff_bet_cohorts = pg.anova(data=reg_mean_ind_lev_df,dv='r', between=['cohort'])
 print(f'Pearson\'s r range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"r"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","r"].item():.2f}; s.d. = {ind_stats.loc[ind_stats["index"]=="std","r"].item():.2f}; F({r_ind_diff_bet_cohorts["ddof1"].item()},{r_ind_diff_bet_cohorts["ddof2"].item()}) = {r_ind_diff_bet_cohorts["F"].item():.2f}, p = {r_ind_diff_bet_cohorts["p-unc"].item():.2f}, one-way ANOVA')
+
+#slope
+slope_ind_diff_bet_cohorts = pg.anova(data=reg_mean_ind_lev_df,dv='slope', between=['cohort'])
+print(f'Slope range = {" - ".join(str(val) for val in ind_stats.loc[ind_stats["index"].isin(["min","max"]),"slope"].to_list())}; mean = {ind_stats.loc[ind_stats["index"]=="mean","slope"].item():.2f}; s.d. = {ind_stats.loc[ind_stats["index"]=="std","slope"].item():.2f}; F({slope_ind_diff_bet_cohorts["ddof1"].item()},{slope_ind_diff_bet_cohorts["ddof2"].item()}) = {slope_ind_diff_bet_cohorts["F"].item():.2f}, p = {slope_ind_diff_bet_cohorts["p-unc"].item():.2f}, one-way ANOVA')
+
 
 r_ind_diff_bet_sex = pg.anova(data=reg_mean_ind_lev_df,dv='r', between=['sex'])
 F_ind_stats = reg_mean_ind_lev_df[reg_mean_ind_lev_df.sex=='F'].describe().reset_index()
@@ -715,12 +720,12 @@ src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_
           )
 
 valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
-allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
-plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
-
-#allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
-allometric_model = r'$\bf{energy\ density\ \textasciitilde\ brain\ expansion^{%0.2f}}$' % (allometric_fit_params[0])
-plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
+#!allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
+#!plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
+#!
+#!#allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
+#!allometric_model = r'$\bf{energy\ density\ \textasciitilde\ brain\ expansion^{%0.2f}}$' % (allometric_fit_params[0])
+#!plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
 
 
 ```
@@ -732,8 +737,14 @@ plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_m
 
 ```python
 ## Ultra-high resolution histological slice from the BigBrain atlas
-bb_vol = nib.load(os.path.join(root_dir,'external','kwagstyl_cortical_layers_tutorial','full8_200um_optbal.nii.gz'))
-bb_layers = nib.load(os.path.join(root_dir,'external','kwagstyl_cortical_layers_tutorial','segmentation_200um.nii.gz'))
+bb_vol_fn = os.path.join(root_dir,'external','kwagstyl_cortical_layers_tutorial','full8_200um_optbal.nii.gz')
+bb_layers_fn = os.path.join(root_dir,'external','kwagstyl_cortical_layers_tutorial','segmentation_200um.nii.gz')
+if not os.path.exists(os .path.dirname(bb_vol_fn)):
+    os.mkdir(os .path.dirname(bb_vol_fn))
+    !wget -P {os .path.dirname(bb_vol_fn)} https://github.com/kwagstyl/cortical_layers_tutorial/raw/main/data/full8_200um_optbal.nii.gz
+    !wget -P {os .path.dirname(bb_vol_fn)} https://github.com/kwagstyl/cortical_layers_tutorial/raw/main/data/segmentation_200um.nii.gz
+bb_vol = nib.load(bb_vol_fn)
+bb_layers = nib.load(bb_layers_fn)
 section = 385 # seleceted arbitrarily
 bb_layers_section=bb_layers.dataobj[section]
 bb_histo_section = bb_vol.dataobj[section]
@@ -840,6 +851,7 @@ src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_
 <!-- #endregion -->
 
 ```python
+ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
 corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
 for gen in ahba_gene_expression.columns[1:]:
     gene_expression = ahba_gene_expression[gen].to_numpy()[:180]
@@ -1076,21 +1088,51 @@ ext_pet_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
 ext_pet_labels = ext_pet_df.columns[1:-1].to_list()
 #PLS
 if 'ed_ext_pet_vox_pls' not in locals():
-    ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df.to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=6)
+    #ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df.to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=6)
+    ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df[ed_vox_df.vox_id.isin(ext_pet_df.vox_id)].to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=12)
 n_vox_sign_comp = (ed_ext_pet_vox_pls.permres.pvals<=0.05).sum()
 print(ed_ext_pet_vox_pls.varexp[:n_vox_sign_comp])
 print(ed_ext_pet_vox_pls.permres.pvals[:n_vox_sign_comp])
 
 icx = 0 # Selected component
 
+##!NEW
+ext_pet_df['pls_x_score_0'] = ed_ext_pet_vox_pls['x_scores'][:,0]
+ext_pet_roi_df = ext_pet_df.groupby('roi_id', as_index=False).median()
+ext_pet_roi_df.loc[ext_pet_roi_df['roi_id']>180,'roi_id'] = ext_pet_roi_df.loc[ext_pet_roi_df['roi_id']>180,'roi_id'] - 20
+
+pls_yloadings_p_df=pd.DataFrame()
+for idx in range(ed_ext_pet_vox_pls['x_scores'].shape[1]):
+    yload,yload_p = stats.pearsonr(ext_pet_df.to_numpy()[:,idx+1], ed_ext_pet_vox_pls['x_scores'][:,icx])
+    pls_yloadings_p_df = pd.concat([pls_yloadings_p_df,pd.DataFrame({'label':[ext_pet_labels[idx]],'y_loading':[yload],'p_val':[yload_p]})],ignore_index=True)
+_,pls_yloadings_p_df['p_val_fdr_bh'] = pg.multicomp(pls_yloadings_p_df['p_val'].to_numpy(),method='fdr_bh')
+
+sorted_idx = np.argsort(ed_ext_pet_vox_pls["y_loadings"][:, icx])
+pls_yloadings_p_df['p_smash'] = np.nan
+for p_smash_cut,isx in enumerate(sorted_idx[::-1]): ##reverse vector
+    if f'smash_pls0_pet-{ext_pet_labels[isx]}' not in cohorts_metadata['all'].keys():
+        cohorts_metadata['all'][f'smash_pls0_pet-{ext_pet_labels[isx]}'] = src.functions.smash_comp(src.functions.metric2mmp(ext_pet_roi_df,'pls_x_score_0','roi_id'),src.functions.metric2mmp(ext_pet_roi_df,ext_pet_labels[isx],'roi_id'),
+                                                                          lh_dist_full,y_nii_fn=os.path.join(img_dir,f'smash_pls0_pet-{ext_pet_labels[isx]}.png'),l=5,u=95,n_mad='min',
+                                                                          p_uthr=1,plot=False,cmap=ListedColormap(extended_cm),print_text=False,plot_rnd=False,plot_surface=False)
+    rpar = pls_yloadings_p_df.loc[pls_yloadings_p_df.label==ext_pet_labels[isx],'y_loading'].item()
+    pnpar = nonparp(rpar, cohorts_metadata['all'][f'smash_pls0_pet-{ext_pet_labels[isx]}'])
+    pnpar = pnpar if pnpar>0 else 0.0001
+    print(f'{ext_pet_labels[isx]}:{pnpar}')
+    pls_yloadings_p_df.loc[pls_yloadings_p_df.label==ext_pet_labels[isx],'p_smash'] = pnpar
+    if pnpar>0.055:
+        break
+        
+        
+##!OLD
+
 ext_pet_colors = np.repeat(np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])[np.newaxis,:],len(ext_pet_labels),axis=0)
 ext_pet_colors[5:7] = plt.cm.tab20c([6]).flatten()
-ext_pet_colors[12] = plt.cm.tab20c([6]).flatten() #17
+ext_pet_colors[11] = plt.cm.tab20c([6]).flatten() #17
 ext_pet_colors[16] = plt.cm.tab20c([6]).flatten() #17
 ext_pet_colors[17] = plt.cm.tab20c([6]).flatten()
-#ext_pet_colors[18] = plt.cm.tab20c([17]).flatten()
+ext_pet_colors[np.isin(np.array(ext_pet_labels),np.array(['5HTT','DAT','NAT','VAChT']))] = [0.5,0.5,0.5,0.5]
 
-fig, axs = plt.subplots(1, 1, figsize=(2.5, 6))
+fig, axs = plt.subplots(1, 1, figsize=(2.5, 6),dpi=img_res_dpi)
 ext_pet_colors_mod = ext_pet_colors.copy()
 err = (ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 1] - ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 0]) / 2
 sorted_idx = np.argsort(ed_ext_pet_vox_pls["y_loadings"][:, icx])#[::-1] 
@@ -1103,13 +1145,19 @@ for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(ext_pet_labels) if ex
 
 axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
 
-for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labels)[sorted_idx]) if ext_pet_label in ['NMDA','mGluR5','GABAa-bz']]:
+for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labels)[sorted_idx]) if ext_pet_label in ['5HTT','DAT','NAT','VAChT']]:
     axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
 
+##! NEW
+axs.axhline(len(ext_pet_labels)-p_smash_cut-0.5, 0, 1, color='k', linestyle='dashed', lw=1.5)
+axs.text(0.4, len(ext_pet_labels)-p_smash_cut-0.6, 'p_smash', ha='left',va='top', color='k',fontsize=11)
+
+##!OLD
 plt.figure()
 src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
                         os.path.join(results_dir,'figures',f'fig5C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=generate_surf)
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=True)
+
 
 ```
 
