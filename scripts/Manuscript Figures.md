@@ -265,8 +265,100 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 
 ```
 
+#### 1B. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
+
+```python
+roiwise_results = False
+other_results = 'std_dynamic_degree_z'
+roiwise_results = roiwise_results if not other_results else True
+all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
+sel_x_var = x_var if not other_results else other_results
+sel_xlabel = xlabel if not other_results else 'SC strength [Z-score]'
+sel_xlabel = xlabel if other_results != 'std_dynamic_degree_z' else 'std(dynamic DC) [Z-score]'
+sel_sites = list(cohorts_metadata.keys())[:-1] if not other_results else list(cohorts_metadata.keys())[:1]
+palette_regplot_index = 5 
+for site in sel_sites:
+    filtered_index_lists = []
+    np_null_dists = []
+    filter_labels = []
+    palette_regplot = []
+    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
+        cohort = f'{site}.{coh}'
+        filtered_index_lists += [all_avg_sel_vals.cohort==cohort]
+        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(sel_x_var,y_var)]]
+        filter_labels += [cohort]
+        if cix<2:
+            palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
+        else:
+            palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
+    src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
+                                    plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
+                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else None,ylim=(10,50) if not other_results else None,
+                                    legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
+    palette_regplot_index += 4
+   
+```
+
+***Statistical differences in the variance explained by models adding the dynamic DC and SC***
+
+```python
+# Run this cell to be able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
+%reload_ext rpy2.ipython
+avg_roi_vals = all_avg_roi_vals[~(all_avg_roi_vals.cohort.isin(['VIE.a1','VIE.a2']))].groupby('roi_id',as_index=False).median()
+```
+
+```R magic_args="-i avg_roi_vals"
+#head(all_avg_roi_vals[all_avg_roi_vals$cohort=="TUM.a1",])
+lm_simple <- lm(cmrglc ~ degree_z, data = avg_roi_vals) #all_avg_roi_vals[all_avg_roi_vals$cohort=="TUM.a1",])
+lm_plus_dyndc <- lm(cmrglc ~ degree_z + std_dynamic_degree_z, data = avg_roi_vals) 
+lm_plus_sc <- lm(cmrglc ~ degree_z + sc_strength_z, data = avg_roi_vals) 
+lm_plus_dyndc_comp <- anova(lm_simple,lm_plus_dyndc)#[2,6]
+lm_plus_sc_comp <- anova(lm_simple,lm_plus_sc)#[2,6]
+summ_lm_simple <- summary(lm_simple)
+summ_lm_plus_dyndc <- summary(lm_plus_dyndc)
+summ_lm_plus_sc <- summary(lm_plus_sc)
+#print(summary(lm_simple))
+print(summ_lm_plus_sc)
+
+#paste("Variance explained by DC ",)
+```
+
+```python
+#print(summ_lm_simple['adj.r.squared'][0])
+import rpy2.robjects as robjects
+from rpy2.robjects.packages import importr
+from rpy2.robjects import FloatVector
+rstats = importr('stats')
+base = importr('base')
+cmrglc_r = FloatVector(avg_roi_vals.cmrglc.to_list())
+degree_z_r = FloatVector(avg_roi_vals.degree_z.to_list())
+std_dynamic_degree_z_r = FloatVector(avg_roi_vals.std_dynamic_degree_z.to_list())
+sc_strength_z_r = FloatVector(avg_roi_vals.sc_strength_z.to_list())
+robjects.globalenv["cmrglc"] = cmrglc_r
+robjects.globalenv["degree_z"] = degree_z_r
+robjects.globalenv["std_dynamic_degree_z"] = std_dynamic_degree_z_r
+robjects.globalenv["sc_strength_z"] = sc_strength_z_r
+lm_simple = rstats.lm("cmrglc ~ degree_z")
+robjects.globalenv["lm_simple"] = lm_simple
+lm_plus_dyndc = rstats.lm("cmrglc ~ degree_z + std_dynamic_degree_z")
+robjects.globalenv["lm_plus_dyndc"] = lm_plus_dyndc
+lm_plus_dyndc_comp = rstats.anova(lm_simple,lm_plus_dyndc)
+lm_plus_sc = rstats.lm("cmrglc ~ degree_z + sc_strength_z")
+robjects.globalenv["lm_plus_sc"] = lm_plus_sc
+lm_plus_sc_comp = rstats.anova(lm_simple,lm_plus_sc)
+
+variance_lm_simple = 100*float(str(base.summary(lm_simple)[8]).split(' ')[1].replace("\n",""))
+variance_lm_plus_dyndc = 100*float(str(base.summary(lm_plus_dyndc)[8]).split(' ')[1].replace("\n",""))
+p_lm_plus_dyndc = float(str(lm_plus_dyndc_comp[5]).split(' ')[-1].replace("\n",""))
+variance_lm_plus_sc = 100*float(str(base.summary(lm_plus_sc)[8]).split(' ')[1].replace("\n",""))
+p_lm_plus_sc = float(str(lm_plus_sc_comp[5]).split(' ')[-1].replace("\n",""))
+
+print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%; F({base.summary(lm_plus_dyndc)[9][1]:n},{base.summary(lm_plus_dyndc)[9][2]:n}) = {base.summary(lm_plus_dyndc)[9][0]:.2f}, p = {p_lm_plus_dyndc:.2f}, one-way ANOVA). the model with the strenght of the structural connectivity added to the model explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%; F({base.summary(lm_plus_sc)[9][1]:n},{base.summary(lm_plus_sc)[9][2]:n}) = {base.summary(lm_plus_sc)[9][0]:.2f}, p = {p_lm_plus_sc}, 2-way ANOVA).')
+
+```
+
 <!-- #region tags=[] -->
-#### 1B. Individual subject analysis
+#### 1C. Individual subject analysis
 <!-- #endregion -->
 
 ```python
@@ -370,98 +462,6 @@ print(f'The model fit is independent of age (r = {corr_ed_age["r"].item():.2f}; 
 
 ```
 
-#### 1C. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
-
-```python
-roiwise_results = False
-other_results = 'std_dynamic_degree_z'
-roiwise_results = roiwise_results if not other_results else True
-all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
-sel_x_var = x_var if not other_results else other_results
-sel_xlabel = xlabel if not other_results else 'SC strength [Z-score]'
-sel_xlabel = xlabel if other_results != 'std_dynamic_degree_z' else 'std(dynamic DC) [Z-score]'
-sel_sites = list(cohorts_metadata.keys())[:-1] if not other_results else list(cohorts_metadata.keys())[:1]
-palette_regplot_index = 5 
-for site in sel_sites:
-    filtered_index_lists = []
-    np_null_dists = []
-    filter_labels = []
-    palette_regplot = []
-    for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
-        cohort = f'{site}.{coh}'
-        filtered_index_lists += [all_avg_sel_vals.cohort==cohort]
-        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(sel_x_var,y_var)]]
-        filter_labels += [cohort]
-        if cix<2:
-            palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
-        else:
-            palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
-    src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
-                                    plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
-                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else None,ylim=(10,50) if not other_results else None,
-                                    legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
-    palette_regplot_index += 4
-   
-```
-
-***Statistical differences in the variance explained by models adding the dynamic DC and SC***
-
-```python
-# Run this cell to be able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
-%reload_ext rpy2.ipython
-avg_roi_vals = all_avg_roi_vals[~(all_avg_roi_vals.cohort.isin(['VIE.a1','VIE.a2']))].groupby('roi_id',as_index=False).median()
-```
-
-```R magic_args="-i avg_roi_vals"
-#head(all_avg_roi_vals[all_avg_roi_vals$cohort=="TUM.a1",])
-lm_simple <- lm(cmrglc ~ degree_z, data = avg_roi_vals) #all_avg_roi_vals[all_avg_roi_vals$cohort=="TUM.a1",])
-lm_plus_dyndc <- lm(cmrglc ~ degree_z + std_dynamic_degree_z, data = avg_roi_vals) 
-lm_plus_sc <- lm(cmrglc ~ degree_z + sc_strength_z, data = avg_roi_vals) 
-lm_plus_dyndc_comp <- anova(lm_simple,lm_plus_dyndc)#[2,6]
-lm_plus_sc_comp <- anova(lm_simple,lm_plus_sc)#[2,6]
-summ_lm_simple <- summary(lm_simple)
-summ_lm_plus_dyndc <- summary(lm_plus_dyndc)
-summ_lm_plus_sc <- summary(lm_plus_sc)
-#print(summary(lm_simple))
-print(summ_lm_plus_sc)
-
-#paste("Variance explained by DC ",)
-```
-
-```python
-#print(summ_lm_simple['adj.r.squared'][0])
-import rpy2.robjects as robjects
-from rpy2.robjects.packages import importr
-from rpy2.robjects import FloatVector
-rstats = importr('stats')
-base = importr('base')
-cmrglc_r = FloatVector(avg_roi_vals.cmrglc.to_list())
-degree_z_r = FloatVector(avg_roi_vals.degree_z.to_list())
-std_dynamic_degree_z_r = FloatVector(avg_roi_vals.std_dynamic_degree_z.to_list())
-sc_strength_z_r = FloatVector(avg_roi_vals.sc_strength_z.to_list())
-robjects.globalenv["cmrglc"] = cmrglc_r
-robjects.globalenv["degree_z"] = degree_z_r
-robjects.globalenv["std_dynamic_degree_z"] = std_dynamic_degree_z_r
-robjects.globalenv["sc_strength_z"] = sc_strength_z_r
-lm_simple = rstats.lm("cmrglc ~ degree_z")
-robjects.globalenv["lm_simple"] = lm_simple
-lm_plus_dyndc = rstats.lm("cmrglc ~ degree_z + std_dynamic_degree_z")
-robjects.globalenv["lm_plus_dyndc"] = lm_plus_dyndc
-lm_plus_dyndc_comp = rstats.anova(lm_simple,lm_plus_dyndc)
-lm_plus_sc = rstats.lm("cmrglc ~ degree_z + sc_strength_z")
-robjects.globalenv["lm_plus_sc"] = lm_plus_sc
-lm_plus_sc_comp = rstats.anova(lm_simple,lm_plus_sc)
-
-variance_lm_simple = 100*float(str(base.summary(lm_simple)[8]).split(' ')[1].replace("\n",""))
-variance_lm_plus_dyndc = 100*float(str(base.summary(lm_plus_dyndc)[8]).split(' ')[1].replace("\n",""))
-p_lm_plus_dyndc = float(str(lm_plus_dyndc_comp[5]).split(' ')[-1].replace("\n",""))
-variance_lm_plus_sc = 100*float(str(base.summary(lm_plus_sc)[8]).split(' ')[1].replace("\n",""))
-p_lm_plus_sc = float(str(lm_plus_sc_comp[5]).split(' ')[-1].replace("\n",""))
-
-print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%; F({base.summary(lm_plus_dyndc)[9][1]:n},{base.summary(lm_plus_dyndc)[9][2]:n}) = {base.summary(lm_plus_dyndc)[9][0]:.2f}, p = {p_lm_plus_dyndc:.2f}, one-way ANOVA). the model with the strenght of the structural connectivity added to the model explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%; F({base.summary(lm_plus_sc)[9][1]:n},{base.summary(lm_plus_sc)[9][2]:n}) = {base.summary(lm_plus_sc)[9][0]:.2f}, p = {p_lm_plus_sc}, 2-way ANOVA).')
-
-```
-
 <!-- #region tags=[] jp-MarkdownHeadingCollapsed=true tags=[] jp-MarkdownHeadingCollapsed=true -->
 ### Figure 2. Energy density distribution
 #### 2A. Calculation
@@ -530,7 +530,7 @@ sns.scatterplot(x=x_var, y=y_var, hue='energy_density',data=avg_vox_vals_with_gx
 
 ## Average ROI values across subjects from all cohorts for visualization purposes and comparisson with external data
 avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id')
-plt.figure()
+plt.figure(dpi=img_res_dpi)
 src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
                         show_colorbar=True,vlow=5,vhigh=95,fig_title='average energy density across cohorts',generate_surf=generate_surf)
 
@@ -548,8 +548,14 @@ avg_vox_vals_with_gx_mask.loc[(avg_vox_vals_with_gx_mask['ostt_signed']>0) & (av
 one_sample_ttest_roi_df = avg_vox_vals_with_gx_mask[['roi_id','ostt_signed']].groupby('roi_id',as_index=False).agg(lambda x: stats.mode(x)[0][0])
 one_sample_ttest_roi_df['ostt_mask'] = one_sample_ttest_roi_df['ostt_signed']
 one_sample_ttest_roi_df.loc[one_sample_ttest_roi_df['ostt_mask']!=0,'ostt_mask']=1
-plt.figure()
+plt.figure(dpi=img_res_dpi)
+src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_mask','roi_id',median=False),os.path.join(results_dir,'figures',f'fig2C_ostt_mask_surf_delete'),
+                        cmap=ListedColormap([gray_c,plt.cm.tab20b([10]).flatten()]),show_colorbar=False,generate_surf=generate_surf)
+plt.figure(dpi=img_res_dpi)
 one_sample_ttest_roi_df.groupby('ostt_signed').count().plot(kind='pie', y='roi_id',legend=False,colors=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0),shadow=False,autopct='%1.1f%%',xlabel='',ylabel='',labels=['','',''],startangle=0)
+plt.figure(dpi=img_res_dpi)
+src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_signed','roi_id',median=False),os.path.join(results_dir,'figures',f'fig2C_ostt_signed_surf_delete'),
+                        cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0)),show_colorbar=False,generate_surf=generate_surf)
 
 
 ```
@@ -597,69 +603,8 @@ avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=Fals
 
 <!-- #region jp-MarkdownHeadingCollapsed=true tags=[] -->
 ### Figure 3. Energy density distribution relates to human cognitive functions and cortical evolution
-#### 3A. Cognitive functions
+#### 3A. Evolutionary allometry of total brain metabolism
 <!-- #endregion -->
-
-```python
-neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-masked_ed-median_cohorts-all_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}_v1.0.csv'))
-neurosynth_order = neurosynth_masks_df[neurosynth_masks_df.energy_density!=0.0].groupby('domain', as_index=False).median().sort_values(by='energy_density',ignore_index=True)
-neurosynth_order['sorted_domain'] = neurosynth_order.index.astype(str).str.zfill(2)+'-'+neurosynth_order.domain
-sorted_domain_map = dict(zip(neurosynth_order['domain'],neurosynth_order['sorted_domain']))
-neurosynth_masks_df['sorted_domain'] = neurosynth_masks_df['domain'].map(sorted_domain_map)
-joypy.joyplot(
-    neurosynth_masks_df,#[neurosynth_masks_df.signal_density!=0.0],#[neurosynth_masks_df.inefficiency!=0.0],
-    by="sorted_domain", 
-    column="energy_density",#figsize=(5,8),
-    colormap=plt.cm.RdBu_r,
-    alpha=0.75,
-    figsize=(7,8),
-    labels=list(neurosynth_masks_df.sort_values(by='sorted_domain',ignore_index=True)['domain'].unique()),
-    #fade=True
-)#,overlap=3)#,x_range=[0,110])
-plt.gca().set_xlim([-5,5])
-plt.gca().set_xlabel('Energy density\n[umol/(min*100g)]')
-for axx in plt.gcf().get_axes()[:-1]:
-    axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
-```
-
-#### 3B. Comparative neuroenergetics
-
-```python
-plt.figure(figsize=(2.5,4))
-sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),hue="ostt_signed",dodge=False,
-            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:],plt.cm.tab20c(range(20))[8][np.newaxis,:]),axis=0))
-plt.gca().get_legend().remove()
-sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
-plt.gca().set_ylabel('\n'.join(ylabel.split(' ')))
-plt.gca().set_xticklabels(['ED<0', 'ED~0', 'ED>0', 'primates'])
-plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
-plt.gca().set_xlabel('one sample t-test areas')
-plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=1.5,zorder=10)
-plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=1.5,zorder=10)
-
-plt.figure(figsize=(2.5,4))
-apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(['sid','ostt_signed'],as_index=False).median()
-sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
-            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
-plt.gca().get_legend().remove()
-plt.gca().set(xlabel='one sample t-test areas', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['ED<0', 'ED~0', 'ED>0'])
-plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
-
-apes_diff_sign = []
-for ix in range(-1,2):
-    apes_diff_ttest = stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)
-    apes_diff_sign += [apes_diff_ttest[1]]
-    if apes_diff_ttest[1]<0.055:
-        print(f'One sample t-test area-{ix} is significantly different from 0 (t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
-apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
-for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
-    if apes_diff_sign[ix]<0.055:
-        sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
-        plt.gca().text(ix, plt.gca().get_ylim()[1]-1.25, sign_text, ha='center', va='bottom', color='r', size=24)
-
-```
-
-#### 3C. Allometric brain expansion
 
 ```python
 ## Karbowski J. BMC Biology 2007
@@ -708,6 +653,45 @@ allometric_Karbowski_df
 
 ```
 
+***Comparative neuroenergetics***
+
+```python
+plt.figure(figsize=(2.5,4))
+sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),hue="ostt_signed",dodge=False,
+            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:],plt.cm.tab20c(range(20))[8][np.newaxis,:]),axis=0))
+plt.gca().get_legend().remove()
+sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
+plt.gca().set_ylabel('\n'.join(ylabel.split(' ')))
+plt.gca().set_xticklabels(['ED<0', 'ED~0', 'ED>0', 'primates'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+plt.gca().set_xlabel('one sample t-test areas')
+plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=1.5,zorder=10)
+plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=1.5,zorder=10)
+
+plt.figure(figsize=(2.5,4))
+apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(['sid','ostt_signed'],as_index=False).median()
+sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
+            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
+plt.gca().get_legend().remove()
+plt.gca().set(xlabel='one sample t-test areas', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['ED<0', 'ED~0', 'ED>0'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+
+apes_diff_sign = []
+for ix in range(-1,2):
+    apes_diff_ttest = stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)
+    apes_diff_sign += [apes_diff_ttest[1]]
+    if apes_diff_ttest[1]<0.055:
+        print(f'One sample t-test area-{ix} is significantly different from 0 (t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
+apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
+for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
+    if apes_diff_sign[ix]<0.055:
+        sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
+        plt.gca().text(ix, plt.gca().get_ylim()[1]-1.25, sign_text, ha='center', va='bottom', color='r', size=24)
+
+```
+
+#### 3B. Regional evolution of brain metabolism
+
 ```python
 chimp2human_expansion = []
 for _, h in enumerate(['lh', 'rh']):
@@ -731,8 +715,8 @@ valid_ind = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_e
 ```
 
 <!-- #region tags=[] jp-MarkdownHeadingCollapsed=true jp-MarkdownHeadingCollapsed=true tags=[] -->
-### Figure 4. Layer specific cellular organization of energy dense regions
-#### 4A. Histological cell density across cortical layers 
+[comment]: <> (### Figure 4. Layer specific cellular organization of energy dense regions)
+#### 3C. Cell density distribution across cortical layers
 <!-- #endregion -->
 
 ```python
@@ -789,77 +773,37 @@ plt.gca().set(xlabel='staining\nintensity')
 
 ```
 
-#### 4B. Energy density relationship with cell density in infragranular layers 
+***Energy density relationship with cell density in infragranular layers***
 
 ```python
-src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig4B_bb-skew_vs_ed.png'),
+plt.figure(dpi=img_res_dpi)
+src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_bb-skew_vs_ed.png'),
                          ylabel='energy density [umol/(min*100g)]', xlabel='cellular density skewness [a.u.]',
                          l=5,u=95,n_mad='min',p_uthr=1,plot=True,cmap=ListedColormap(extended_cm),print_text=False,plot_rnd=False,plot_surface=False,
                          x_surr_corrs=cohorts_metadata['all']['smash_bb-skew_{}-{}'.format(x_var,y_var)])
 plt.gca().scatter(bbl_roi_skew[[lskew,hskew]],avg_roi_ed_vals[[lskew,hskew]],s=300, alpha=0.6,
                   c=np.concatenate((getattr(plt.cm,'magma')(range(256))[24][np.newaxis,:],getattr(plt.cm,'magma')(range(256))[231][np.newaxis,:]),axis=0))
-#plt.figure()
-#plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(img_dir,'bb_skew'),colorbar=True,cmap='magma',fig_title='BB skewness',vlow=5,vhigh=95)
-```
-
-#### 4C. Energy density relationship with transcription levels for signaling
-
-```python
-ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
-stab_genesets = ['STAB_excitatory','STAB_interneuron','STAB_astrocytes','STAB_olygodendrocytes']
-stab_geneset_clusters = {}
-stab_geneset_clusters['STAB_excitatory'] = ['ExN1_4','ExN1a','ExN1b','ExN1c','ExN2','ExN3','ExN4','ExN5','ExN6a','ExN6b','ExN8','ExN9','ExN10','ExN11']
-stab_geneset_clusters['STAB_interneuron'] = ['InN1a','InN1b','InN3','InN4a','InN4b','InN4_5','InN5','InN5_6','InN6','InN7_8']
-stab_geneset_clusters['STAB_astrocytes'] = ['Astro1','Astro2','Astro3','Astro4']
-stab_geneset_clusters['STAB_olygodendrocytes'] = ['Olig1','Olig3','Olig4','NPC']
-stab_gene_expression_df = pd.DataFrame({})
-for geneset in stab_genesets:
-    stab_genesets_clusters_gene_ids = []
-    for geneset_cluster in stab_geneset_clusters[geneset]:
-        stab_genesets_clusters_gene_ids += pd.read_csv(os.path.join(root_dir,'external','STAB2021',f'{geneset_cluster}.tsv'),sep='\t')['symbol'].to_list()
-    stab_gene_expression_df = pd.concat([stab_gene_expression_df,
-                                         pd.DataFrame({'energy_density':avg_roi_ed_vals,
-                                                       'gene_expression':src.functions.gx_gene_exp(ahba_gene_expression,stab_genesets_clusters_gene_ids,mmp_n,agg_func='nanmean')[:180],
-                                                       'type':geneset})],
-                                        ignore_index=True)
-                
-stab_gene_expression_df = stab_gene_expression_df[(stab_gene_expression_df.energy_density>stab_gene_expression_df.energy_density.min()) & (stab_gene_expression_df.gene_expression>stab_gene_expression_df.gene_expression.min())]        
-    
-stab_filter_labels = ['STAB_excitatory','STAB_interneuron']
-stab_palette_regplot = [sns.color_palette()[1],sns.color_palette()[4]]
-xlab='gene_expression'
-ylab='energy_density'
-stab_filtered_index_lists=[]
-for stab_filt in stab_filter_labels:
-    stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
-src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],
-                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.45,0.65),ylim=(-8,8),s=10,print_ci=True)
-plt.figure()
-stab_filter_labels = ['STAB_astrocytes','STAB_olygodendrocytes']
-stab_palette_regplot = [(0.5,0.5,0.5,0.5),(0.4,0.4,0.4,1)]
-stab_filtered_index_lists=[]
-for stab_filt in stab_filter_labels:
-    stab_filtered_index_lists+=[stab_gene_expression_df.type==stab_filt]
-src.functions.multiple_joinplot(stab_gene_expression_df,xlab,ylab,stab_filtered_index_lists,[],stab_filter_labels,stab_palette_regplot,[],
-                  xlabel='gene expression [a.u.]',ylabel='energy density[umol/(min*100g)]',xlim=(0.35,0.60),ylim=(-8,8),s=10,print_ci=True)
+plt.figure(dpi=img_res_dpi)
+src.functions.plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(results_dir,'figures',f'fig3C_bb-skew_surf_delete'),cmap='magma',
+                        show_colorbar=True,vlow=5,vhigh=95,generate_surf=generate_surf)
 
 ```
 
 <!-- #region tags=[] -->
-### Figure 5. Higher rate of neuromodulation in energy dense regions
-#### 5A. Significant correlations between energy density and gene expression of brain specific genes
+### Figure 4. Higher rate of neuromodulation in energy dense regions
+#### 4A. Genetic mapping
 <!-- #endregion -->
 
 ```python
-ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
-corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
-for gen in ahba_gene_expression.columns[1:]:
-    gene_expression = ahba_gene_expression[gen].to_numpy()[:180]
-    gene_expression[np.isnan(gene_expression)]=np.min(gene_expression)-1 if np.min(gene_expression)<0 else 0
-    r_ed_gexp_p, p_ed_gexp_p = src.functions.corr_wo_outliers(avg_roi_ed_vals,gene_expression,n_mad=3.5)
-    corr_ed_gexp = corr_ed_gexp.append({'gene':gen,'r':r_ed_gexp_p,'p':p_ed_gexp_p}, ignore_index=True)
-
-_,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.float32),method='fdr_bh')
+#ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
+#corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
+#for gen in ahba_gene_expression.columns[1:]:
+#    gene_expression = ahba_gene_expression[gen].to_numpy()[:180]
+#    gene_expression[np.isnan(gene_expression)]=np.min(gene_expression)-1 if np.min(gene_expression)<0 else 0
+#    r_ed_gexp_p, p_ed_gexp_p = src.functions.corr_wo_outliers(avg_roi_ed_vals,gene_expression,n_mad=3.5)
+#    corr_ed_gexp = corr_ed_gexp.append({'gene':gen,'r':r_ed_gexp_p,'p':p_ed_gexp_p}, ignore_index=True)
+#
+#_,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.float32),method='fdr_bh')
 
 plt.figure(figsize=(6,2.5))
 sns.histplot(data=corr_ed_gexp, x="r",color=(0.6,0.6,0.6))
@@ -884,18 +828,23 @@ gene_exp_null_corr = ahba_gene_expression[corr_ed_gexp[(corr_ed_gexp.r>0) & (cor
 gene_exp_null_corr[np.isnan(gene_exp_null_corr)]=np.min(gene_exp_null_corr)-1 if np.min(gene_exp_null_corr)<0 else 0
 plt.figure(figsize=(0.5,3))
 sns.heatmap(avg_roi_ed_vals[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
+plt.figure(dpi=img_res_dpi)
+src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
+                        show_colorbar=False,vlow=5,vhigh=95,generate_surf=generate_surf)
+
 plt.figure(figsize=(0.5,3))
 sns.heatmap(gene_exp_null_corr[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
-
-#plt.figure()
-#plot_surf(gene_exp_null_corr,os.path.join(img_dir,corr_ed_gen[(corr_ed_gen.r>0) & (corr_ed_gen.r<=0.000011)].gene.item()),colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95)#
+plt.figure(dpi=img_res_dpi)
+src.functions.plot_surf(gene_exp_null_corr,
+                        os.path.join(results_dir,'figures',f'fig4A_nullcorr-{corr_ed_gexp[(corr_ed_gexp.r>0) & (corr_ed_gexp.r<=0.000011)].gene.item()}_delete'),
+                        show_colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95,generate_surf=generate_surf)#
 #plt.figure()
 #plot_surf(ed_180rois,os.path.join(img_dir,'avg_sign_density_4coh'),colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95)
 
 
 ```
 
-#### 5B. Gene ontology (GO): cellular components
+***Gene ontology (GO): cellular components***
 
 ```python
 go_cell_comps = pd.read_csv(os.path.join(root_dir,'CompEnrichment_SD_AHBA_fdr0005_all_bgGTEx_Allsign.txt'),sep='\t')
@@ -923,7 +872,7 @@ cb.ax.set_ylabel('Enrichment', rotation=90)
 cb.ax.yaxis.set_label_position('left')
 ```
 
-#### 5C. GO: molecular functions
+***GO: molecular functions***
 
 ```python
 go_mol_funcs = pd.read_csv(os.path.join(root_dir,'FPenrichment_SD_AHBA_fdr0005_all_bgGTEx_Allsign.txt'),sep='\t')
@@ -958,7 +907,7 @@ cbar = g.fig.colorbar(plt.cm.ScalarMappable(norm=clrs.Normalize(vmin=go_mol_func
 axins.set_title(orig_leg[1][0],fontsize=14,loc='left')
 ```
 
-#### 5D. GO: hierarchical summary of molecular functions 
+#### 4B. Summary genetics
 
 ```python
 go_genes = pd.read_excel(os.path.join(root_dir,'SD_AHBA_fdr0005_GTExbrainBG_GO_significant_genes.xlsx'),engine='openpyxl',usecols='A:I',nrows=70)
@@ -998,105 +947,24 @@ ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular si
           loc='lower left', ncol=2, bbox_to_anchor=(-0.4, -0.225))
 ```
 
-#### 5E. Validation of relationship between energy density and receptor density expression from receptor-PET imaging
-
-```python
-ext_pet_roi_maps = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen2021_19-pet-tracers_roi.csv'))
-ext_pet_roi_maps[ext_pet_roi_maps.columns[ext_pet_roi_maps.columns!='roi_id']] = ext_pet_roi_maps[ext_pet_roi_maps.columns[ext_pet_roi_maps.columns!='roi_id']].apply(stats.zscore)
-tracer_labels = np.array(['MU','5HT4','A4B2'])
-gexp_pet_df = ext_pet_roi_maps[['roi_id']+list(tracer_labels)]
-gexp_pet_df = gexp_pet_df[gexp_pet_df.roi_id<=180] #only left hemisphere acquired in all AHBA subjects
-gexp_pet_df['energy_density'] = avg_roi_ed_vals[(gexp_pet_df.roi_id.unique()-1).astype(int)]
-gexp_pet_df = gexp_pet_df.melt(['roi_id','energy_density'],var_name='neuromodulator',ignore_index=False)
-gexp_pet_df['source'] = 'PET'
-
-gexp_with_pet_available_df = ahba_gene_expression[gene_ids_with_pet_available][:180].apply(stats.zscore)
-gexp_with_pet_available_df.columns = tracer_labels
-gexp_with_pet_available_df = gexp_with_pet_available_df[gexp_with_pet_available_df.index.isin(gexp_pet_df.roi_id.unique()-1)]
-gexp_with_pet_available_df['energy_density'] = avg_roi_ed_vals[(gexp_pet_df.roi_id.unique()-1).astype(int)]
-gexp_with_pet_available_df['roi_id'] = gexp_pet_df.roi_id.unique()
-gexp_with_pet_available_df = gexp_with_pet_available_df.melt(['roi_id','energy_density'],var_name='neuromodulator',ignore_index=False)
-gexp_with_pet_available_df['source'] = 'gene_expression'
-
-gexp_pet_df = pd.concat([gexp_pet_df,gexp_with_pet_available_df], ignore_index=True)
-for nt in tracer_labels:
-    pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
-    src.functions.multiple_joinplot(gexp_pet_df,'value','energy_density',[((gexp_pet_df.neuromodulator==nt) & (gexp_pet_df.source=='gene_expression')),((gexp_pet_df.neuromodulator==nt) & (gexp_pet_df.source=='PET'))],
-                      [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
-                      xlabel=nt+' [Z-score]',ylabel='energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5,print_ci=True)
-
-```
-
-#### 5F. Energy density variance explained by external receptor-PET density-maps
-
-```python
-ext_pet_roi_maps_mat = stats.zscore(ext_pet_roi_maps.to_numpy()[:,1:], axis=0)
-ext_pet_labels = ext_pet_roi_maps.columns[1:].to_list()
-all_ind_roi_ed_vals = all_ind_roi_vals.groupby(['sid','roi_id'],as_index=False).median()[['sid','roi_id','energy_density']].pivot(index='roi_id',columns='sid', values='energy_density').reset_index()
-all_ind_roi_ed_vals = all_ind_roi_ed_vals[all_ind_roi_ed_vals.roi_id.isin(ext_pet_roi_maps.roi_id.unique())]
-all_ind_roi_ed_vals_mat= stats.zscore(all_ind_roi_ed_vals.to_numpy(), axis=0,nan_policy='omit')[:,1:]
-all_ind_roi_ed_vals_mat = np.nan_to_num(all_ind_roi_ed_vals_mat)
-
-#PLS
-if 'ed_ext_pet_roi_pls' not in locals():
-    ed_ext_pet_roi_pls = pyls.behavioral_pls(all_ind_roi_ed_vals_mat,ext_pet_roi_maps_mat,n_perm=1000,n_boot=1000,n_proc=6)
-n_sign_comp = (ed_ext_pet_roi_pls.permres.pvals<=0.05).sum()
-print(ed_ext_pet_roi_pls.varexp[:n_sign_comp])
-print(ed_ext_pet_roi_pls.permres.pvals[:n_sign_comp])
-icx = 0 # Selected component
-
-ext_pet_colors = np.repeat(np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])[np.newaxis,:],len(ext_pet_labels),axis=0)
-ext_pet_colors[5:7] = plt.cm.tab20c([6]).flatten()
-ext_pet_colors[12] = plt.cm.tab20c([6]).flatten() #17
-ext_pet_colors[16] = plt.cm.tab20c([6]).flatten() #17
-ext_pet_colors[17] = plt.cm.tab20c([6]).flatten()
-#ext_pet_colors[18] = plt.cm.tab20c([17]).flatten()
-
-fig, axs = plt.subplots(1, 1, figsize=(3, 6))
-ext_pet_colors_mod = ext_pet_colors.copy()
-err = (ed_ext_pet_roi_pls["bootres"]["y_loadings_ci"][:, icx, 1] - ed_ext_pet_roi_pls["bootres"]["y_loadings_ci"][:, icx, 0]) / 2
-sorted_idx = np.argsort(ed_ext_pet_roi_pls["y_loadings"][:, icx])#[::-1] 
-significance_index = np.zeros(len(ext_pet_labels), dtype=bool)    
-axs.barh(np.arange(len(err)), np.sort(ed_ext_pet_roi_pls["y_loadings"][:, icx]),xerr=err[sorted_idx],color=ext_pet_colors_mod[sorted_idx])
-axs.set_yticks(np.arange(ext_pet_roi_maps.shape[1]-1))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
-
-for ext_pet_idx in [3,6,14]:
-    ext_pet_labels[ext_pet_idx] = r'$\bf{'+ext_pet_labels[ext_pet_idx]+'}$'
-
-axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
-
-for ext_pet_idx in [1,12,15]:
-    axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
-
-#for patch in  [i for (i, v) in zip(axs.patches, np.isin(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx],['A4B2','MU','5HT4'])) if v]:
-#    patch.set(edgecolor='k',linewidth=1.5)
-#axs.patches[np.where((np.array(ext_pet_labels)=='mGluR5')[sorted_idx])[0][0]].set(edgecolor=list(plt.cm.Dark2(range(8))[3][:3])+[0.7],linewidth=2)
-#axs.patches[np.where((np.array(ext_pet_labels)=='GABAa-bz')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)
-#axs.patches[np.where((np.array(ext_pet_labels)=='NMDA')[sorted_idx])[0][0]].set(edgecolor=plt.cm.tab20c([6]).flatten(),linewidth=2)            
-        
-#plt.figure()
-#plot_surf(metric2mmp(pd.DataFrame({'roi_id':valid_roi_ids,'ed_score':ed_ext_pet_roi_pls.x_scores[:,icx]}),'ed_score','roi_id'),
-#          os.path.join(img_dir,f'ed_score_{icx}'),colorbar=True,cmap=sel_cm,fig_title=f'ED score {icx}',vlow=5,vhigh=95)
-fig.tight_layout()
-```
+#### 4C. Chemoarchitecture mapping ####
 
 ```python
 ed_vox_df = pd.read_csv(os.path.join(root_dir,'individual_all-cohorts_vox_gx-mask_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
 ed_vox_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
 ext_pet_df = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen2021_19-pet-tracers_vox.csv'))
 ext_pet_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
-ext_pet_labels = ext_pet_df.columns[1:-1].to_list()
+ext_pet_labels = ext_pet_df.columns[1:-2].to_list()
 #PLS
 if 'ed_ext_pet_vox_pls' not in locals():
-    #ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df.to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=6)
-    ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df[ed_vox_df.vox_id.isin(ext_pet_df.vox_id)].to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=12)
+#    #ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df.to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=6)
+    ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df[ed_vox_df.vox_id.isin(ext_pet_df.vox_id)].to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-2],n_perm=1000,n_boot=1000,n_proc=12)
 n_vox_sign_comp = (ed_ext_pet_vox_pls.permres.pvals<=0.05).sum()
 print(ed_ext_pet_vox_pls.varexp[:n_vox_sign_comp])
 print(ed_ext_pet_vox_pls.permres.pvals[:n_vox_sign_comp])
 
 icx = 0 # Selected component
 
-##!NEW
 ext_pet_df['pls_x_score_0'] = ed_ext_pet_vox_pls['x_scores'][:,0]
 ext_pet_roi_df = ext_pet_df.groupby('roi_id', as_index=False).median()
 ext_pet_roi_df.loc[ext_pet_roi_df['roi_id']>180,'roi_id'] = ext_pet_roi_df.loc[ext_pet_roi_df['roi_id']>180,'roi_id'] - 20
@@ -1122,9 +990,6 @@ for p_smash_cut,isx in enumerate(sorted_idx[::-1]): ##reverse vector
     if pnpar>0.055:
         break
         
-        
-##!OLD
-
 ext_pet_colors = np.repeat(np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.7])[np.newaxis,:],len(ext_pet_labels),axis=0)
 ext_pet_colors[5:7] = plt.cm.tab20c([6]).flatten()
 ext_pet_colors[11] = plt.cm.tab20c([6]).flatten() #17
@@ -1148,11 +1013,9 @@ axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.col
 for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labels)[sorted_idx]) if ext_pet_label in ['5HTT','DAT','NAT','VAChT']]:
     axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
 
-##! NEW
 axs.axhline(len(ext_pet_labels)-p_smash_cut-0.5, 0, 1, color='k', linestyle='dashed', lw=1.5)
 axs.text(0.4, len(ext_pet_labels)-p_smash_cut-0.6, 'p_smash', ha='left',va='top', color='k',fontsize=11)
 
-##!OLD
 plt.figure()
 src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
                         os.path.join(results_dir,'figures',f'fig5C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
@@ -1160,6 +1023,36 @@ src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_
 
 
 ```
+
+***Validation of relationship between energy density and receptor density expression from receptor-PET imaging***
+
+```python
+selected_genes=['OPRM1','HTR4','CHRNA4']
+selected_tracers=['MU','5HT4','A4B2']
+sel_genexp_df = ahba_gene_expression.loc[:179,selected_genes].reset_index() #stats.zscore(
+sel_genexp_df.rename(columns={'index': 'roi_id'}, inplace=True)
+sel_genexp_df['roi_id']+=1
+
+sel_genexp_df[sel_genexp_df.columns[sel_genexp_df.columns!='roi_id']] = sel_genexp_df[sel_genexp_df.columns[sel_genexp_df.columns!='roi_id']].apply(stats.zscore,nan_policy='omit')
+
+genexp_pet_df = ext_pet_roi_df[ext_pet_roi_df.roi_id<181].loc[:,selected_tracers+['roi_id']].merge(sel_genexp_df,on='roi_id',how='left').merge(pd.DataFrame({'energy_density':src.functions.metric2mmp(all_avg_roi_vals,'energy_density','roi_id'),'roi_id':np.arange(1,181)}),on='roi_id',how='left')
+genexp_pet_df = genexp_pet_df.melt(['roi_id','energy_density'], var_name='neurotransmitter',ignore_index=False)
+genexp_pet_df['variable'] = 'PET'
+genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'variable'] = 'gene_expression'
+genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'neurotransmitter'] = genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'neurotransmitter'].map(
+dict(zip(selected_genes, selected_tracers)))
+
+
+for nt in selected_tracers:
+    pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
+    src.functions.multiple_joinplot(genexp_pet_df,'value','energy_density',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='gene_expression')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
+                      [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
+                      xlabel=nt+' [Z-score]',ylabel='Energy density\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5)#,xlim=(-3,5),ylim=ylim,
+    
+    
+```
+
+#### 4D. Cognitive mapping ####
 
 ```python
 neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-xscore0_pls-median_cohorts-all_vox_nsubj-30_{conn_metric}-{dc_type}_v1.0.csv'))

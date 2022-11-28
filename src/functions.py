@@ -183,7 +183,7 @@ def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad
             if plot_rnd:
                 plt.figure(figsize=(2,5))
                 plot_rnd_dist(x_surr_corrs,test_r,p_np,plt.gca(),xlabel=xlabel,ylabel=ylabel,xlim=p_xlim,print_text=print_text)
-            if plot_surface: plot_surf(y,remove_ext(y_nii_fn)+'_LH_ROIwise',vlow=l,vhigh=u,cmap=cmap,colorbar=colorbar)
+            if plot_surface: plot_surf(y,remove_ext(y_nii_fn)+'_LH_ROIwise',vlow=l,vhigh=u,cmap=cmap,show_colorbar=colorbar)
         if return_x_surr_corrs:
             return x_surr_corrs
     else:
@@ -206,11 +206,11 @@ def plot_rnd_dist(surr_corrs,r_param,p_non_param,ax,xlabel='',ylabel='',xlim=[-0
     plt.gca().set(xlabel='Correlation',ylabel='Density')
 
 def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False,fig_title='',generate_surf=True):
+    w, h = constants.LANDSCAPE_SIZE
+    aspect = w / h
+    fig = plt.figure(figsize=(5, 5/aspect))
+    ax = fig.add_axes([0.075, 0, 0.85, 0.85])
     if show_colorbar:
-        w, h = constants.LANDSCAPE_SIZE
-        aspect = w / h
-        fig = plt.figure(figsize=(5, 5/aspect))
-        ax = fig.add_axes([0.075, 0, 0.85, 0.85])
         cax = fig.add_axes([0.44, 0.02, 0.12, 0.07])
     #print(constants.DLABEL_FILE)
     
