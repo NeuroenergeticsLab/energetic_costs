@@ -305,6 +305,7 @@ for site in sel_sites:
 # Run this cell to be able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
 %reload_ext rpy2.ipython
 avg_roi_vals = all_avg_roi_vals[~(all_avg_roi_vals.cohort.isin(['VIE.a1','VIE.a2']))].groupby('roi_id',as_index=False).median()
+
 ```
 
 ```R magic_args="-i avg_roi_vals"
@@ -582,6 +583,7 @@ nw_consistent_rois_palette['None'] = gray_c
 
 roi_ids_order = all_ind_roi_vals.groupby('roi_id',as_index=False).median().sort_values(by='energy_density',ignore_index=True).roi_id.to_list()
 ### To test the plot with less ROIS: all_ind_roi_vals[all_ind_roi_vals.roi_id.isin(all_ind_roi_vals.roi_id.unique()[::10])]
+plt.figure(dpi=img_res_dpi)
 g = sns.catplot(x='roi_id', y='energy_density', data=all_ind_roi_vals,height=3.5,aspect=2,hue='nw_consistent_rois',
                 palette=nw_consistent_rois_palette,order=roi_ids_order,legend=False,s=3)
 g.set(xticklabels=[])
@@ -589,12 +591,16 @@ plt.gca().set_xlabel('ROI')
 plt.gca().set_ylabel('Energy density\n[umol/(min*100g)]')
 plt.gca().axhline(0, 0, 1, color='k', lw=0.75,zorder=10)
 
+plt.figure(dpi=img_res_dpi)
+src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'figures',f'fig2D_yeo7-nws_surf_delete'),
+                        show_colorbar=False,cmap=ListedColormap([gray_c]+list(atlas_dict['nw2color'].values())[:-1]),generate_surf=generate_surf)
+
 avg_consistent_roi_vals = all_ind_roi_vals[all_ind_roi_vals.nw_consistent_rois!='None']
-plt.figure()
+plt.figure(dpi=img_res_dpi)
 avg_consistent_neg_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed_sign_consistent_rois<0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
 avg_consistent_neg_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
                              labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_neg_roi_vals.index.tolist()])
-plt.figure()
+plt.figure(dpi=img_res_dpi)
 avg_consistent_pos_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed_sign_consistent_rois>0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
 avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
                              labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_pos_roi_vals.index.tolist()])
