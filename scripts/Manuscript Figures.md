@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.14.0
+      jupytext_version: 1.13.7
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -335,10 +335,12 @@ cmrglc_r = FloatVector(avg_roi_vals.cmrglc.to_list())
 degree_z_r = FloatVector(avg_roi_vals.degree_z.to_list())
 std_dynamic_degree_z_r = FloatVector(avg_roi_vals.std_dynamic_degree_z.to_list())
 sc_strength_z_r = FloatVector(avg_roi_vals.sc_strength_z.to_list())
+gm_vbm_z_r = FloatVector(avg_roi_vals.gm_vbm_z.to_list())
 robjects.globalenv["cmrglc"] = cmrglc_r
 robjects.globalenv["degree_z"] = degree_z_r
 robjects.globalenv["std_dynamic_degree_z"] = std_dynamic_degree_z_r
 robjects.globalenv["sc_strength_z"] = sc_strength_z_r
+robjects.globalenv["gm_vbm_z"] = gm_vbm_z_r
 lm_simple = rstats.lm("cmrglc ~ degree_z")
 robjects.globalenv["lm_simple"] = lm_simple
 lm_plus_dyndc = rstats.lm("cmrglc ~ degree_z + std_dynamic_degree_z")
@@ -348,13 +350,24 @@ lm_plus_sc = rstats.lm("cmrglc ~ degree_z + sc_strength_z")
 robjects.globalenv["lm_plus_sc"] = lm_plus_sc
 lm_plus_sc_comp = rstats.anova(lm_simple,lm_plus_sc)
 
+lm_plus_vbm = rstats.lm("cmrglc ~ degree_z + gm_vbm_z")
+robjects.globalenv["lm_plus_vbm"] = lm_plus_vbm
+lm_plus_vbm_comp = rstats.anova(lm_simple,lm_plus_vbm)
+
 variance_lm_simple = 100*float(str(base.summary(lm_simple)[8]).split(' ')[1].replace("\n",""))
 variance_lm_plus_dyndc = 100*float(str(base.summary(lm_plus_dyndc)[8]).split(' ')[1].replace("\n",""))
 p_lm_plus_dyndc = float(str(lm_plus_dyndc_comp[5]).split(' ')[-1].replace("\n",""))
 variance_lm_plus_sc = 100*float(str(base.summary(lm_plus_sc)[8]).split(' ')[1].replace("\n",""))
 p_lm_plus_sc = float(str(lm_plus_sc_comp[5]).split(' ')[-1].replace("\n",""))
 
+variance_lm_plus_vbm = 100*float(str(base.summary(lm_plus_vbm)[8]).split(' ')[1].replace("\n",""))
+p_lm_plus_vbm = float(str(lm_plus_vbm_comp[5]).split(' ')[-1].replace("\n",""))
+
+
 print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the dynamic DC added (variance = {variance_lm_plus_dyndc:.2f}%; F({base.summary(lm_plus_dyndc)[9][1]:n},{base.summary(lm_plus_dyndc)[9][2]:n}) = {base.summary(lm_plus_dyndc)[9][0]:.2f}, p = {p_lm_plus_dyndc:.2f}, one-way ANOVA). the model with the strenght of the structural connectivity added to the model explains a significant higher variance (variance = {variance_lm_plus_sc:.2f}%; F({base.summary(lm_plus_sc)[9][1]:n},{base.summary(lm_plus_sc)[9][2]:n}) = {base.summary(lm_plus_sc)[9][0]:.2f}, p = {p_lm_plus_sc}, 2-way ANOVA).')
+
+print(f'There were not statistical differences in the variance explained by the model using only DC (variance = {variance_lm_simple:.2f}%) compared to the one with the VBM added (variance = {variance_lm_plus_vbm:.2f}%; F({base.summary(lm_plus_vbm)[9][1]:n},{base.summary(lm_plus_vbm)[9][2]:n}) = {base.summary(lm_plus_vbm)[9][0]:.2f}, p = {p_lm_plus_vbm:.2f}, one-way ANOVA)')
+
 
 ```
 
@@ -405,7 +418,7 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
 
 ```python
 if 'reg_ind_lev_df' not in locals():
-    reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'variance','slope'])
+    reg_ind_lev_df = pd.DataFrame({},columns=['sid','sex','age','cohort', 'r', 'p', 'p_smash', 'variance','slope'])
     for site in list(cohorts_metadata.keys())[:-1]:
         for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
             cohort = f'{site}.{coh}'
@@ -413,30 +426,54 @@ if 'reg_ind_lev_df' not in locals():
                 subj_id = cohorts_metadata[site][coh]['sub_pref'] % sid
                 ind_vox_vals = all_ind_vox_vals[(all_ind_vox_vals.sid==subj_id) & (all_ind_vox_vals.cohort==cohort)]
                 ind_reg_dict = pg.linear_regression(ind_vox_vals[x_var],ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)
-                reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
+                p_ind_smash = nonparp(np.sqrt(ind_reg_dict['r2']), cohorts_metadata[site][coh]['individual_smash'][sid][f'smash_{x_var}-{y_var}'])
+                p_ind_smash = p_ind_smash if p_ind_smash>0 else 0.0001
+                reg_ind_lev_df = reg_ind_lev_df.append({'sid': subj_id,'cohort':cohort, 'r':np.sqrt(ind_reg_dict['r2']), 'p':ind_reg_dict['pval'][1].astype(float), 'p_smash':p_ind_smash, 'variance':ind_reg_dict['r2'].astype(float), 'slope':ind_reg_dict['coef'][1]}, ignore_index=True)
+
+reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
+            
+reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
+reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
+reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
+reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
     
-    reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
-                
-    reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
-    reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
-    reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
-    reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
-
-cohort_order = ['TUM.a1','TUM.a2','TUM.b','VIE.a1','VIE.a2']
-coh_colors = {}
+cohort_order = ['TUM.a1','TUM.a2','TUM.b','VIE.a1','VIE.a2']    
+plt.figure(dpi=img_res_dpi)
+sns.violinplot(x="cohort", y="r",order=cohort_order,#dodge=False,
+            data=reg_ind_lev_df,color="1",legend=False)
+sns.stripplot(x="cohort",y="r", data=reg_ind_lev_df,order=cohort_order,jitter=True,dodge=True,color='k')#,linewidth=1)#,edgecolor='r',linewidth=1
+ax1=plt.gca()
+ax1.set(ylabel='Pearson correlation')#, color=sns.color_palette()[0])
+ax1.set_xticklabels(['TUM.exp1','TUM.exp2','TUM.rep','VIE.rep1','VIE.rep2'],rotation=30)
+ax1.spines['top'].set_visible(False)
+ax1.spines['right'].set_visible(False)
+c_idx0=10 #derived from the ax1.collections: colls = [] for coll in ax1.collections: colls+=[coll.get_facecolor()];sns.palplot(coll.get_facecolor())
 for coh in cohort_order:
-    coh_colors[coh]=cohorts_metadata[coh.split('.')[0]][coh.split('.')[1]]['color']
+    coh_face_colors = np.repeat(plt.cm.tab20([14]),reg_ind_lev_df[reg_ind_lev_df.cohort==coh].shape[0],axis=0)
+    coh_face_colors[(reg_ind_lev_df[reg_ind_lev_df.cohort==coh].p_smash>0.055).to_numpy(dtype=bool),:] = plt.cm.tab20b([14])
+    ax1.collections[c_idx0].set_facecolor(coh_face_colors)
+    c_idx0+=1
 
-f, ax = plt.subplots(figsize=(5,1.5*len(cohort_order))) #7,5
-ax=half_violinplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,scale = "area", inner = None, orient = 'h',linewidth=0,order=cohort_order[::-1])
-ax=sns.stripplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,edgecolor="white",size = 7, jitter = 1, zorder = 0, orient = 'h', alpha=0.88,
-                         linewidth=0.88, edgecolors='w',order=cohort_order[::-1])
-ax=sns.boxplot(x='r',y='cohort',data=reg_ind_lev_df, color = "black", width = .15, zorder = 10, showcaps = True,order=cohort_order[::-1], 
-boxprops = {'facecolor':'none', "zorder":10},showfliers=False, whiskerprops = {'linewidth':2, "zorder":10},saturation = 1, orient = 'h')
-[s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['right']]]
-plt.gca().xaxis.grid(False)
-plt.gca().yaxis.grid(True)
-plt.gca().set_xlabel('Pearson correlation')
+from matplotlib.lines import Line2D
+ax1.legend(handles=[Line2D([0], [0], marker='o', color='w', label='p_smash>0.05',markerfacecolor=plt.cm.tab20b([14]).flatten(), markersize=8, markeredgewidth=1.5)],
+           loc='lower left', frameon=False, handletextpad=0.01)#, markeredgecolor='r'
+
+
+
+#coh_colors = {}
+#for coh in cohort_order:
+#    coh_colors[coh]=cohorts_metadata[coh.split('.')[0]][coh.split('.')[1]]['color']
+#
+#f, ax = plt.subplots(figsize=(5,1.5*len(cohort_order))) #7,5
+#ax=half_violinplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,scale = "area", inner = None, orient = 'h',linewidth=0,order=cohort_order[::-1])
+#ax=sns.stripplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,edgecolor="white",size = 7, jitter = 1, zorder = 0, orient = 'h', alpha=0.88,
+#                         linewidth=0.88, edgecolors='w',order=cohort_order[::-1])
+#ax=sns.boxplot(x='r',y='cohort',data=reg_ind_lev_df, color = "black", width = .15, zorder = 10, showcaps = True,order=cohort_order[::-1], 
+#boxprops = {'facecolor':'none', "zorder":10},showfliers=False, whiskerprops = {'linewidth':2, "zorder":10},saturation = 1, orient = 'h')
+#[s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['right']]]
+#plt.gca().xaxis.grid(False)
+#plt.gca().yaxis.grid(True)
+#plt.gca().set_xlabel('Pearson correlation')
 
 ## STATS
 ind_stats = reg_ind_lev_df.describe().reset_index()
