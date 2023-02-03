@@ -16,9 +16,9 @@ jupyter:
 #### Installation of libraries not available as packages (Run only the first time you open this notebook)
 
 ```python
+import sys
 !git clone https://github.com/MICA-MNI/ENIGMA.git ._ENIGMA;cd ._ENIGMA;{sys.prefix}/bin/python setup.py install;rm -rf ../._ENIGMA
 !git clone https://github.com/rmarkello/pyls.git ._pyls;cd ._pyls;{sys.prefix}/bin/python setup.py install;rm -rf ../._pyls
-import sys
 !{sys.prefix}/bin/pip install -e ../
 #Restart the kernel after installing
 
@@ -61,7 +61,7 @@ from brainsmash.mapgen.stats import pearsonr, pairwise_r, nonparp
 from ptitprince import half_violinplot
 
 plt.rcParams['font.sans-serif'] = ['Open Sans']+plt.rcParams['font.sans-serif']
-sns.set_context("notebook", font_scale=1.5)
+sns.set_context("notebook", font_scale=2.1)
 sns.set_style("whitegrid")
 
 import src.functions
@@ -127,19 +127,19 @@ dc_z = '_z'
 y_var = pet_metric
 x_var = conn_metric+dc_z
 if dyn_wc!='':
-    x_label='std(DC_window) [a.u.]' if  dc_z=='' else 'std(DC_window) [Z-score]'
+    x_label='std(dFC_window) [a.u.]' if  dc_z=='' else 'std(dFC_window) [Z-score]'
 elif conn_metric=='DTI':
-    x_label='DTI strength [a.u.]'
+    x_label='DTI communicability [a.u.]'
 elif conn_metric=='alff':
     x_label='ALFF [a.u.]' if  dc_z=='' else 'ALFF [Z-score]'
 elif conn_metric=='shannon_entropy':
     x_label='Shannon entropy [bits]' if not len(dc_z) else 'Shannon entropy [Z-score]'
 else:
     x_label=''
-xlabel='DC [Z-score]' if not len(x_label) else x_label
+xlabel='dFC [Z-score]' if not len(x_label) else x_label
 ylabel='CMRglc [umol/(min*100g)]' if y_var == pet_metric else xlabel
 xlabel=xlabel if y_var == pet_metric else 'CMRglc [umol/(min*100g)]'
-img_res_dpi = 300
+fig_res_dpi = 300
 generate_surf = False if (('BINDER_SERVICE_HOST' in os.environ.keys()) & ('workbench' not in os.environ["PATH"])) else True
 ```
 
@@ -258,7 +258,7 @@ src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,y_var,'roi
           show_colorbar=True,vlow=10,vhigh=90,fig_title='individual CMRglc',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 src.functions.plot_surf(src.functions.metric2mmp(example_ind_vox_vals,x_var,'roi_id'),os.path.join(results_dir,'figures',f'fig1A_surf-{x_var}'),
           cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,'viridis')(np.arange(0,getattr(plt.cm,'viridis').N))))),
-          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual DC',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
+          show_colorbar=True,vlow=10,vhigh=90,fig_title='individual dFC',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
 ## Individual voxelwise scatterplot
@@ -314,7 +314,7 @@ for site in sel_sites:
     src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
                                     plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
                                     xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else None,ylim=(10,50) if not other_results else None,
-                                    legend_bbox_to_anchor=(-0.07,-0.6) if site=='TUM' else (-0.09,-0.5))
+                                    legend_bbox_to_anchor=(0,-0.85) if site=='TUM' else (-0.25,-0.675))
     palette_regplot_index += 4
    
 ```
@@ -401,13 +401,16 @@ s = 0.1
 selected_site = 'VIE' #options: TUM or VIE
 coh0 = 'rep1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
 coh1 = 'rep2' #options: exp2
-selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
+#selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']))
 s1 = f'{selected_site}.{coh0}'
 s2 = f'{selected_site}.{coh1}'
 scatter_color = plt.cm.tab20c([7]).flatten() if selected_site=='TUM' else plt.cm.tab20c([11]).flatten()#
 if((selected_site=='TUM') & (coh0=='rep')):
     scatter_color = plt.cm.tab20c([14]).flatten()
     selected_site_sids = cohorts_metadata[selected_site]['rep']['sids']
+else:
+    #selected_site_sids += list(np.unique(cohorts_metadata[selected_site][coh1]['sids']))
+    selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']+cohorts_metadata[selected_site][coh1]['sids']))
 for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids']):
     subj_id = cohorts_metadata[selected_site][coh0]['sub_pref'] % sid
     ylim=(5,50) if sid not in [3,26,33] else (5,60)
@@ -478,23 +481,6 @@ from matplotlib.lines import Line2D
 ax1.legend(handles=[Line2D([0], [0], marker='o', color='w', label='p_smash>0.05',markerfacecolor=plt.cm.tab20b([14]).flatten(), markersize=8, markeredgewidth=1.5)],
            loc='lower left', frameon=False, handletextpad=0.01)#, markeredgecolor='r'
 
-
-
-#coh_colors = {}
-#for coh in cohort_order:
-#    coh_colors[coh]=cohorts_metadata[coh.split('.')[0]][coh.split('.')[1]]['color']
-#
-#f, ax = plt.subplots(figsize=(5,1.5*len(cohort_order))) #7,5
-#ax=half_violinplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,scale = "area", inner = None, orient = 'h',linewidth=0,order=cohort_order[::-1])
-#ax=sns.stripplot(x='r',y='cohort',data=reg_ind_lev_df,palette=coh_colors,edgecolor="white",size = 7, jitter = 1, zorder = 0, orient = 'h', alpha=0.88,
-#                         linewidth=0.88, edgecolors='w',order=cohort_order[::-1])
-#ax=sns.boxplot(x='r',y='cohort',data=reg_ind_lev_df, color = "black", width = .15, zorder = 10, showcaps = True,order=cohort_order[::-1], 
-#boxprops = {'facecolor':'none', "zorder":10},showfliers=False, whiskerprops = {'linewidth':2, "zorder":10},saturation = 1, orient = 'h')
-#[s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['right']]]
-#plt.gca().xaxis.grid(False)
-#plt.gca().yaxis.grid(True)
-#plt.gca().set_xlabel('Pearson correlation')
-
 ## STATS
 ind_stats = reg_ind_lev_df.describe().reset_index()
 reg_mean_ind_lev_df = reg_ind_lev_df.groupby(['sid','sex','cohort'],as_index=False).median()
@@ -543,7 +529,7 @@ plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
 #### 2B. Stability
 
 ```python
-#cohort_mapping_inv = {v: k for k, v in cohort_mapping.items()}
+#!!!cohort_mapping_inv = {v: k for k, v in cohort_mapping.items()}
 src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==f'{reference_site}.{reference_cohort}'],'signaling_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2A_surf-sc_{reference_site}.{reference_cohort}'),
                         cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title='signaling costs exploratory cohort',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 sd_smash_corr_bet_coh_df = pd.DataFrame({})
@@ -552,19 +538,18 @@ for cohort in cohort_order[1:]:
     r_param,p_param=stats.pearsonr(all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==f'{reference_site}.{reference_cohort}','signaling_costs'],
                                    all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==cohort,'signaling_costs'])
     
-#    cohorts_metadata['all'][f'smash_sc_{reference_site}.{reference_cohort}-{cohort}'] = cohorts_metadata['all'].pop(f'smash_sd_{cohort_mapping_inv[reference_site+"."+reference_cohort]}-{cohort_mapping_inv[cohort]}')
+#!!!    cohorts_metadata['all'][f'smash_sc_{reference_site}.{reference_cohort}-{cohort}'] = cohorts_metadata['all'].pop(f'smash_sd_{cohort_mapping_inv[reference_site+"."+reference_cohort]}-{cohort_mapping_inv[cohort]}')
     
     sd_smash_corr_bet_coh_df[f'{cohort}={r_param:.2f}'] = cohorts_metadata['all']['smash_sc_{}-{}'.format(f'{reference_site}.{reference_cohort}',cohort)]
     sd_smash_corr_bet_coh_palette[f'{cohort}={r_param:.2f}'] = cohorts_metadata[cohort.split('.')[0]][cohort.split('.')[1]]['color']
     src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==cohort],'signaling_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2B_surf_sc-{cohort}'),
                             cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'signaling costs {cohort}',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
     
-plt.figure(figsize=(5,3),dpi=fig_res_dpi)
+plt.figure(figsize=(6,3),dpi=fig_res_dpi)
 g = sns.kdeplot(data=sd_smash_corr_bet_coh_df,palette=sd_smash_corr_bet_coh_palette,legend=True)
 legend_handles = g.get_legend().legendHandles #get_legend_handles_labels()
 g.get_legend().remove()
-plt.legend(handles=legend_handles,title='correlation with TUM.exp1 '+r'$(p_{smash}$<0.001)', loc='upper left',ncol=2,bbox_to_anchor=(-0.225,-0.3), labels=list(sd_smash_corr_bet_coh_df.columns))
-#plt.legend(legend_handles[0],legend_handles[1],title='correlation with TUM.a1 '+r'$(p_{smash}$<0.001)', loc='upper left', labels=list(sd_smash_corr_bet_coh_df.columns),ncol=2,bbox_to_anchor=(-0.25,-0.3))
+plt.legend(handles=legend_handles,title='correlation with TUM.exp1 '+r'$(p_{smash}$<0.001)', loc='upper left',ncol=2,bbox_to_anchor=(-0.35,-0.3), labels=list(sd_smash_corr_bet_coh_df.columns))
 plt.gca().set_xlim(-0.9,0.9)
 plt.gca().set_xlabel('SMASH correlation distributions')
 for ix,col in enumerate(list(sd_smash_corr_bet_coh_df.columns)):
@@ -713,18 +698,18 @@ linreg_Karbowski = pg.linear_regression(allometric_Karbowski_df['log(volume)'],a
 #allometric_model = r'$\bf{glucose\ metabolism\ \propto\ brain\ volume^{%0.2f}}$' % (allometric_fit_params_Karbowski[0]) #\textasciitilde
 allometric_model = r'$\bf{glucose\ metabolism\ \propto\ brain\ volume^{%0.2f}}$' % (linreg_Karbowski['coef'][1])
 
-plt.gca().text(plt.gca().get_xlim()[0]-0.25,plt.gca().get_ylim()[0]-1.25, allometric_model, ha='left',va='top', color='k')
+plt.gca().text(plt.gca().get_xlim()[0]-1.5,plt.gca().get_ylim()[0]-1.1, allometric_model, ha='left',va='top', color='k')
 
 for index, row in allometric_Karbowski_df.iterrows():
     if row['species'] in (['baboon','goat','cat','Human (Karbowski 2007, whole brain)']):
         #plt.gca().annotate(row['species'], (row['log(volume)']-0.1, row['log(total_glucose)']),fontsize=10,ha = 'right')
-        plt.gca().annotate(row['species'], (row['log(volume)']-0.125, row['log(total_glucose)']-0.05),fontsize=14, ha='right')
+        plt.gca().annotate(row['species'], (row['log(volume)']-0.125, row['log(total_glucose)']-0.05),fontsize=18, ha='right')
     elif row['species']=='monkey':
         #plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.2),fontsize=14)
-        plt.gca().annotate(row['species'], (row['log(volume)'], row['log(total_glucose)']-0.25),fontsize=14, ha='center', va="bottom")
+        plt.gca().annotate(row['species'], (row['log(volume)'], row['log(total_glucose)']-0.25),fontsize=18, ha='center', va="bottom")
     else:
-        plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.05),fontsize=14)
-plt.gca().annotate('Human\n(our data,\nGM only)', (np.log10(581)+0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.6),fontsize=14)
+        plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.05),fontsize=18)
+plt.gca().annotate('Human\n(our data,\nGM only)', (np.log10(581)+0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.6),fontsize=18)
 #allometric_Karbowski_df
 pg.linear_regression(allometric_Karbowski_df['log(volume)'],allometric_Karbowski_df['log(total_glucose)'],coef_only=False,remove_na=True,alpha=0.1)
 
@@ -743,6 +728,7 @@ plt.gca().set_xticklabels(['SC<0', 'SC~0', 'SC>0', 'primates'])
 plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
 plt.gca().set_xlabel('one sample t-test regions')
 plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=1.5,zorder=10)
+#roi_id are NaN for non-human primates data
 plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=1.5,zorder=10)
 
 plt.figure(figsize=(2.5,4),dpi=fig_res_dpi)
@@ -758,12 +744,14 @@ for ix in range(-1,2):
     apes_diff_ttest = stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)
     apes_diff_sign += [apes_diff_ttest[1]]
     if apes_diff_ttest[1]<0.055:
-        print(f'One sample t-test region-{ix} is significantly different from 0 (t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
+        print(f'One sample t-test region-{ix} is significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(["roi_id"],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
+    else:
+        print(f'One sample t-test region-{ix} is NOT significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(["roi_id"],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
 apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
 for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
     if apes_diff_sign[ix]<0.055:
         sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
-        plt.gca().text(ix, plt.gca().get_ylim()[1]-1.25, sign_text, ha='center', va='bottom', color='r', size=24)
+        plt.gca().text(ix, plt.gca().get_ylim()[1]-1.25, sign_text, ha='center', va='bottom', color='r', size=28)
 
 ```
 
@@ -876,15 +864,15 @@ pg.linear_regression(bbl_roi_skew[:180][valid_ind_sc_skew],avg_roi_ed_vals[valid
 <!-- #endregion -->
 
 ```python
-#ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
-#corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
-#for gen in ahba_gene_expression.columns[1:]:
-#    gene_expression = ahba_gene_expression[gen].to_numpy()[:180]
-#    gene_expression[np.isnan(gene_expression)]=np.min(gene_expression)-1 if np.min(gene_expression)<0 else 0
-#    r_ed_gexp_p, p_ed_gexp_p = src.functions.corr_wo_outliers(avg_roi_ed_vals,gene_expression,n_mad=3.5)
-#    corr_ed_gexp = corr_ed_gexp.append({'gene':gen,'r':r_ed_gexp_p,'p':p_ed_gexp_p}, ignore_index=True)
-#
-#_,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.float32),method='fdr_bh')
+ahba_gene_expression = pd.read_csv(os.path.join(root_dir,'external','AHBA','allgenes_stable_r0.2_glasser_360.csv')) #Obtained using the function enigmatoolbox.datasets.fetch_ahba 
+corr_ed_gexp = pd.DataFrame(columns=['gene','r','p'])
+for gen in ahba_gene_expression.columns[1:]:
+    gene_expression = ahba_gene_expression[gen].to_numpy()[:180]
+    gene_expression[np.isnan(gene_expression)]=np.min(gene_expression)-1 if np.min(gene_expression)<0 else 0
+    r_ed_gexp_p, p_ed_gexp_p = src.functions.corr_wo_outliers(avg_roi_ed_vals,gene_expression,n_mad=3.5)
+    corr_ed_gexp = corr_ed_gexp.append({'gene':gen,'r':r_ed_gexp_p,'p':p_ed_gexp_p}, ignore_index=True)
+
+_,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.float32),method='fdr_bh')
 
 plt.figure(figsize=(6,2.5),dpi=fig_res_dpi)
 sns.histplot(data=corr_ed_gexp, x="r",color=(0.6,0.6,0.6))
@@ -952,6 +940,7 @@ cb.ax.yaxis.set_label_position('left')
 ***GO: molecular functions***
 
 ```python
+sns.set_context("notebook", font_scale=1.7)
 go_mol_funcs = pd.read_csv(os.path.join(root_dir,'FPenrichment_SD_AHBA_fdr0005_all_bgGTEx_Allsign.txt'),sep='\t')
 go_mol_funcs['-log10(adjusted p-value)'] = -np.log10(go_mol_funcs['FDR q-value'])
 go_mol_funcs = go_mol_funcs.sort_values(by='FDR q-value',ignore_index=True,ascending=False)
@@ -961,14 +950,14 @@ go_mol_funcs['sorted_id'] = go_mol_funcs['id'].map(go_mol_funcs_sort_order)
 go_mol_funcs.loc[go_mol_funcs.Description=='molecular transducer activity','Description'] = r'$\bf{receptor\ activity}$'+'\nmolecular transducer activity'
 go_mol_funcs.loc[go_mol_funcs.Description=='voltage-gated ion channel activity','Description'] = r'$\bf{transporter\ activity}$'+'\nvoltage-gated ion channel activity'
 go_mol_funcs = go_mol_funcs.sort_values(by='sorted_id',ignore_index=True,ascending=False)
-plt.figure(dpi=fig_res_dpi)
+plt.figure(figsize=(12,11),dpi=fig_res_dpi)
 g = sns.relplot(data=go_mol_funcs, x="-log10(adjusted p-value)", y="sorted_id", hue="Enrichment",size="Number of genes",palette=ListedColormap(extended_cm[20:236]),sizes=(150,400))
 plt.gca().set_yticks(go_mol_funcs.sorted_id.to_list())
 plt.gca().set_yticklabels(go_mol_funcs.Description.to_list())
 [s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['left'], plt.gca().spines['right']]]
 plt.gca().xaxis.grid(False)
 plt.gca().set_ylabel('GO term')
-plt.gca().set_title('Gene ontology - molecular function')
+plt.gca().set_title('Gene ontology - molecular function',fontsize=28)
 orig_leg = plt.gca().get_legend_handles_labels()
 g._legend.remove()
 leg = plt.legend(orig_leg[0][8:],orig_leg[1][8:],bbox_to_anchor=(1,1.05), loc="upper left", frameon=False,title=orig_leg[1][7],title_fontsize=14)
@@ -977,7 +966,7 @@ axins = inset_axes(g.ax,
                    width="3%",  # width = 3% of parent_bbox width
                    height="25%",
                    loc='lower left',
-                   bbox_to_anchor=(1.05, 0.05, 1.05, 1.05),
+                   bbox_to_anchor=(1.05, 0.0, 1.05, 1.0),
                    bbox_transform=g.ax.transAxes
                    )
 cbar = g.fig.colorbar(plt.cm.ScalarMappable(norm=clrs.Normalize(vmin=go_mol_funcs['Enrichment'].min(), vmax=go_mol_funcs['Enrichment'].max(), clip=False), cmap=ListedColormap(extended_cm[20:236])),cax=axins)
@@ -987,6 +976,7 @@ axins.set_title(orig_leg[1][0],fontsize=14,loc='left')
 #### 4B. Summary genetics
 
 ```python
+sns.set_context("notebook", font_scale=2.1)
 go_genes = pd.read_excel(os.path.join(root_dir,'SD_AHBA_fdr0005_GTExbrainBG_GO_significant_genes.xlsx'),engine='openpyxl',usecols='A:I',nrows=70)
 go_genes_summary = go_genes.groupby(['gene_type','gene_type_subcategory'],as_index=False).count()
 total_genes = go_genes_summary.gene.sum()
@@ -1021,7 +1011,7 @@ wd1,_ =ax.pie(np.array([np.sum(go_genes_pie_data[:2]),np.sum(go_genes_pie_data[-
        wedgeprops=dict(width=0.3, edgecolor='w'))
 ax.set(aspect="equal")
 ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular signaling','others'],
-          loc='lower left', ncol=2, bbox_to_anchor=(-0.4, -0.225))
+          loc='lower left', ncol=2, bbox_to_anchor=(-0.6, -0.3))
 ```
 
 #### 4C. Chemoarchitecture mapping ####
@@ -1034,7 +1024,6 @@ ext_pet_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
 ext_pet_labels = ext_pet_df.columns[1:-2].to_list()
 #PLS
 if 'ed_ext_pet_vox_pls' not in locals():
-#    #ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df.to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-1],n_perm=1000,n_boot=1000,n_proc=6)
     ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df[ed_vox_df.vox_id.isin(ext_pet_df.vox_id)].to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-2],n_perm=5000,n_boot=5000,n_proc=12)
 n_vox_sign_comp = (ed_ext_pet_vox_pls.permres.pvals<=0.05).sum()
 print(ed_ext_pet_vox_pls.varexp[:n_vox_sign_comp])
@@ -1074,7 +1063,7 @@ ext_pet_colors[16] = plt.cm.tab20c([6]).flatten() #17
 ext_pet_colors[17] = plt.cm.tab20c([6]).flatten()
 ext_pet_colors[np.isin(np.array(ext_pet_labels),np.array(['5HTT','DAT','NAT','VAChT']))] = [0.5,0.5,0.5,0.5]
 
-fig, axs = plt.subplots(1, 1, figsize=(2.5, 6),dpi=fig_res_dpi)
+fig, axs = plt.subplots(1, 1, figsize=(2.5, 8),dpi=fig_res_dpi)
 ext_pet_colors_mod = ext_pet_colors.copy()
 err = (ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 1] - ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 0]) / 2
 sorted_idx = np.argsort(ed_ext_pet_vox_pls["y_loadings"][:, icx])#[::-1] 
@@ -1123,7 +1112,7 @@ for nt in selected_tracers:
     pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
     src.functions.multiple_joinplot(genexp_pet_df,'value','signaling_costs',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='gene_expression')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
                       [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
-                      xlabel=nt+' [Z-score]',ylabel='signaling costs\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=True,mad_thr=3.5,print_ci=True)#,xlim=(-3,5),ylim=ylim,
+                      xlabel=nt+' [Z-score]',ylabel='signaling costs\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.4,-0.7),plot_legend=True,mad_thr=3.5,print_ci=False)#,xlim=(-3,5),ylim=ylim,
     
     
 ```
@@ -1144,7 +1133,7 @@ joypy.joyplot(
     column="ext_pet_vox_pls_0",#figsize=(5,8),
     colormap=plt.cm.RdBu_r,
     alpha=0.75,
-    figsize=(7,8),
+    figsize=(9,10),
     labels=list(neurosynth_masks_df.sort_values(by='sorted_domain',ignore_index=True)['domain'].unique()),
     #fade=True
 )#,overlap=3)#,x_range=[0,110])
@@ -1153,9 +1142,6 @@ plt.gca().set_xlabel('External PET maps\n1st PLS score [a.u.]')
 for axx in plt.gcf().get_axes()[:-1]:
     axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
 ```
-
-### Supplementary figures
-#### S1.
 
 ```python
 

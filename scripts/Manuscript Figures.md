@@ -16,9 +16,9 @@ jupyter:
 #### Installation of libraries not available as packages (Run only the first time you open this notebook)
 
 ```python
+import sys
 !git clone https://github.com/MICA-MNI/ENIGMA.git ._ENIGMA;cd ._ENIGMA;{sys.prefix}/bin/python setup.py install;rm -rf ../._ENIGMA
 !git clone https://github.com/rmarkello/pyls.git ._pyls;cd ._pyls;{sys.prefix}/bin/python setup.py install;rm -rf ../._pyls
-import sys
 !{sys.prefix}/bin/pip install -e ../
 #Restart the kernel after installing
 
@@ -746,7 +746,7 @@ for ix in range(-1,2):
     if apes_diff_ttest[1]<0.055:
         print(f'One sample t-test region-{ix} is significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(["roi_id"],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
     else:
-#        print(f'One sample t-test region-{ix} is NOT significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(['roi_id'],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
+        print(f'One sample t-test region-{ix} is NOT significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(["roi_id"],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
 apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
 for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
     if apes_diff_sign[ix]<0.055:
@@ -1142,9 +1142,6 @@ plt.gca().set_xlabel('External PET maps\n1st PLS score [a.u.]')
 for axx in plt.gcf().get_axes()[:-1]:
     axx.axvline(0, 0, 1, color='k', linestyle='dashed', lw=1)#,zorder=7)
 ```
-
-### Supplementary figures
-#### S1.
 
 ```python
 
