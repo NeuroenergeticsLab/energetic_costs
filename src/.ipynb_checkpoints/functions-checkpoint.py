@@ -158,7 +158,7 @@ def corr_wo_outliers(x,y,n_mad=2):
         valid_ind = ((x>np.nanmin(x)) & (y>np.nanmin(y)))    
     return stats.pearsonr(x[valid_ind], y[valid_ind])
 
-def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad=2,rnd_method='smash',l=5,u=95,p_uthr=0.06,colorbar=True,xlim=None,ylim=None,p_xlim=[-0.5,0.5],plot=True,print_text=False,plot_rnd=True,plot_surface=True,x_surr_corrs=None):
+def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad=2,rnd_method='smash',l=5,u=95,p_uthr=0.06,colorbar=True,xlim=None,ylim=None,p_xlim=[-0.5,0.5],plot=True,print_text=False,plot_rnd=True,plot_surface=True,x_surr_corrs=None,fig_res_dpi=72):
     valid_ind = valid_data_index(x,y,n_mad=n_mad)
     test_r,test_p = stats.pearsonr(x[valid_ind], y[valid_ind])
     if test_p<p_uthr:
@@ -176,14 +176,15 @@ def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad
             return_x_surr_corrs = False
         p_np = nonparp(test_r, x_surr_corrs)
         if plot:
+            plt.figure(dpi=fig_res_dpi)
             if p_np<0.08:
                 plot_joint(x[valid_ind],y[valid_ind],s=28,robust=False,x_label=xlabel,y_label=ylabel,xlim=xlim,ylim=ylim,p_smash=p_np)
             else:
                 plot_joint(x[valid_ind],y[valid_ind],s=28,robust=False,x_label=xlabel,y_label=ylabel,xlim=xlim,ylim=ylim)
             if plot_rnd:
-                plt.figure(figsize=(2,5))
+                plt.figure(figsize=(2,5),dpi=fig_res_dpi)
                 plot_rnd_dist(x_surr_corrs,test_r,p_np,plt.gca(),xlabel=xlabel,ylabel=ylabel,xlim=p_xlim,print_text=print_text)
-            if plot_surface: plot_surf(y,remove_ext(y_nii_fn)+'_LH_ROIwise',vlow=l,vhigh=u,cmap=cmap,show_colorbar=colorbar)
+            if plot_surface: plot_surf(y,remove_ext(y_nii_fn)+'_LH_ROIwise',vlow=l,vhigh=u,cmap=cmap,show_colorbar=colorbar,fig_res_dpi=fig_res_dpi)
         if return_x_surr_corrs:
             return x_surr_corrs
     else:
@@ -205,10 +206,10 @@ def plot_rnd_dist(surr_corrs,r_param,p_non_param,ax,xlabel='',ylabel='',xlim=[-0
     plt.gca().grid(False,axis='x')
     plt.gca().set(xlabel='Correlation',ylabel='Density')
 
-def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False,fig_title='',generate_surf=True):
+def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False,fig_title='',generate_surf=True,fig_res_dpi=72):
     w, h = constants.LANDSCAPE_SIZE
     aspect = w / h
-    fig = plt.figure(figsize=(5, 5/aspect))
+    fig = plt.figure(figsize=(5, 5/aspect),dpi=fig_res_dpi)
     ax = fig.add_axes([0.075, 0, 0.85, 0.85])
     if show_colorbar:
         cax = fig.add_axes([0.44, 0.02, 0.12, 0.07])
@@ -236,9 +237,9 @@ def plot_surf(met,met_fn,ax='',cmap='magma',vlow=0,vhigh=100,show_colorbar=False
         cax.get_xaxis().set_tick_params(length=0, pad=-2)
         cbar.set_ticklabels([])
         cax.text(-0.025, 0.4,str(np.nanmin(met).round(1)), ha='right', va='center', transform=cax.transAxes,#np.nanpercentile(met, vlow)
-                 fontsize=10)
+                 fontsize=15)
         cax.text(1.025, 0.4, str(np.nanmax(met).round(1)), ha='left', va='center', transform=cax.transAxes,#np.nanpercentile(met, vhigh)
-                 fontsize=10)
+                 fontsize=15)
         cbar.outline.set_visible(False)
     cur_ax.set_title(fig_title) if ax else cur_ax.title(fig_title)
 
@@ -272,7 +273,7 @@ def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,pa
             df_filtered = df_filtered[remove_outliers(df_filtered[x].to_numpy(),mad_thr)]        
         
         
-        corr_mod = pg.corr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y]).reset_index()
+        corr_mod = pg.corr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y],alpha=0.1).reset_index()
         #rp,pp = stats.pearsonr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y])
         rp = corr_mod["r"].item()
         pp = corr_mod["p-val"].item()
