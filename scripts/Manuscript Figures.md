@@ -641,7 +641,7 @@ plt.gca().axhline(0, 0, 1, color='k', lw=0.75,zorder=10)
 
 
 plt.figure(dpi=fig_res_dpi)
-src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'figures',f'fig2D_yeo7-nws_surf'),
+src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'figures',f'fig2D_surf_yeo7-nws'),
                         show_colorbar=False,cmap=ListedColormap([gray_c]+list(atlas_dict['nw2color'].values())[:-1]),generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 avg_consistent_roi_vals = all_ind_roi_vals[all_ind_roi_vals.nw_consistent_rois!='None']
@@ -1082,7 +1082,7 @@ axs.text(0.4, len(ext_pet_labels)-p_smash_cut-0.6, 'p_smash', ha='left',va='top'
 
 src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
                         os.path.join(results_dir,'figures',f'fig5C_surf_PLS'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=True,fig_res_dpi=fig_res_dpi)
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
 ```

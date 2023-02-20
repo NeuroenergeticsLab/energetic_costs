@@ -280,8 +280,9 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 #### 1B. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
 
 ```python
-roiwise_results = True
+roiwise_results = False
 other_results = ''# options '' for ROIwise dFC or 'std_dynamic_degree_z'/'sc_strength_z'
+ps_legend_flag = True if other_results != 'sc_strength_z' else False #For the DTI, not all cohorts are <0.0001 
 roiwise_results = roiwise_results if not other_results else True
 all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
 sel_x_var = x_var if not other_results else other_results
@@ -305,8 +306,8 @@ for site in sel_sites:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
     src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
                                     plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
-                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else (-2,2),ylim=(15,45),#(10,50) if not other_results else (15,45),
-                                    legend_bbox_to_anchor=(0,-0.85) if site=='TUM' else (-0.25,-0.675))
+                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else (-2,2),ylim=(15,45) if roiwise_results else (10,50),# if not other_results else (15,45),
+                                    legend_bbox_to_anchor=(-0.1,-0.85) if site=='TUM' else (-0.15,-0.675),ps_legend_flag = ps_legend_flag) #-0.25 for DTI data
     palette_regplot_index += 4
    
 ```
@@ -395,9 +396,9 @@ print(f'There were not statistical differences in the variance explained by the 
 ```python
 selected_df = all_ind_vox_vals
 s = 0.1
-selected_site = 'TUM' #options: TUM or VIE
-coh0 = 'exp1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
-coh1 = 'exp2' #options: exp2
+selected_site = 'VIE' #options: TUM or VIE
+coh0 = 'rep1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
+coh1 = 'rep2' #options: exp2
 #selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']))
 s1 = f'{selected_site}.{coh0}'
 s2 = f'{selected_site}.{coh1}'
@@ -423,16 +424,16 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
         smash_dists+=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list,color_list,scatter_color,
                       #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.25,-0.675),plot_legend=True,s=s)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=False)
     elif(sid in cohorts_metadata[selected_site][coh1]['sids']):
         filtered_index=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
         smash_dists=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[1:],color_list[1:],scatter_color,
                       #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.25,-0.675),plot_legend=True,s=s)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=False)
     else:
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[:1],color_list[:1],scatter_color,
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.25,-0.675),plot_legend=True,s=s)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=False)
  
 ```
 
@@ -517,7 +518,7 @@ g = src.functions.plot_joint(example_ind_vox_vals[x_var],example_ind_vox_vals[y_
 
 plt.figure(figsize=(3,3),dpi=fig_res_dpi)
 example_ind_vox_vals['residual'] = pg.linear_regression(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)['residuals']
-sns.scatterplot(x_var,'residual',data=example_ind_vox_vals,s=3*s,legend=False,hue='residual', palette=sel_cm,
+sns.scatterplot(x_var,'residual',data=example_ind_vox_vals,s=15*s,legend=False,hue='residual', palette=sel_cm,
                 vmin=example_ind_vox_vals.residual.quantile(0.3),vmax=example_ind_vox_vals.residual.quantile(0.7))
 plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
 
@@ -546,7 +547,7 @@ plt.figure(figsize=(6,3),dpi=fig_res_dpi)
 g = sns.kdeplot(data=sd_smash_corr_bet_coh_df,palette=sd_smash_corr_bet_coh_palette,legend=True)
 legend_handles = g.get_legend().legendHandles #get_legend_handles_labels()
 g.get_legend().remove()
-plt.legend(handles=legend_handles,title='correlation with TUM.exp1 '+r'$(p_{smash}$<0.001)', loc='upper left',ncol=2,bbox_to_anchor=(-0.35,-0.3), labels=list(sd_smash_corr_bet_coh_df.columns))
+plt.legend(handles=legend_handles,title='correlation with TUM.exp1 '+r'$(p_{smash}$<0.0001)', loc='upper left',ncol=2,bbox_to_anchor=(-0.35,-0.3), labels=list(sd_smash_corr_bet_coh_df.columns))
 plt.gca().set_xlim(-0.9,0.9)
 plt.gca().set_xlabel('SMASH correlation distributions')
 for ix,col in enumerate(list(sd_smash_corr_bet_coh_df.columns)):
@@ -575,7 +576,7 @@ sns.scatterplot(x=x_var, y=y_var, hue='signaling_costs',data=avg_vox_vals_with_g
 
 ## Average ROI values across subjects from all cohorts for visualization purposes and comparisson with external data
 avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'signaling_costs','roi_id')
-src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
+src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_signalingcosts-avg'),cmap=ListedColormap(extended_cm),
                         show_colorbar=True,vlow=5,vhigh=95,fig_title='average signaling costs across cohorts',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
@@ -592,11 +593,11 @@ avg_vox_vals_with_gx_mask.loc[(avg_vox_vals_with_gx_mask['ostt_signed']>0) & (av
 one_sample_ttest_roi_df = avg_vox_vals_with_gx_mask[['roi_id','ostt_signed']].groupby('roi_id',as_index=False).agg(lambda x: stats.mode(x)[0][0])
 one_sample_ttest_roi_df['ostt_mask'] = one_sample_ttest_roi_df['ostt_signed']
 one_sample_ttest_roi_df.loc[one_sample_ttest_roi_df['ostt_mask']!=0,'ostt_mask']=1
-src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_mask','roi_id',median=False),os.path.join(results_dir,'figures',f'fig2C_ostt_mask_surf_delete'),
+src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_mask','roi_id',median=False),os.path.join(results_dir,'figures',f'fig2C_surf_ostt_mask'),
                         cmap=ListedColormap([gray_c,plt.cm.Set2([5]).flatten()]),show_colorbar=False,generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 plt.figure(dpi=fig_res_dpi)
 one_sample_ttest_roi_df.groupby('ostt_signed').count().plot(kind='pie', y='roi_id',legend=False,colors=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0),shadow=False,autopct='%1.1f%%',xlabel='',ylabel='',labels=['','',''],startangle=0)
-src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_signed','roi_id',median=False),os.path.join(results_dir,'figures',f'fig2C_ostt_signed_surf_delete'),
+src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_signed','roi_id',median=False),os.path.join(results_dir,'figures',f'fig2C_surf_ostt_signed_mask'),
                         cmap=ListedColormap(np.concatenate((np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0)),show_colorbar=False,generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
@@ -640,7 +641,7 @@ plt.gca().axhline(0, 0, 1, color='k', lw=0.75,zorder=10)
 
 
 plt.figure(dpi=fig_res_dpi)
-src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'figures',f'fig2D_yeo7-nws_surf_delete'),
+src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'figures',f'fig2D_surf_yeo7-nws'),
                         show_colorbar=False,cmap=ListedColormap([gray_c]+list(atlas_dict['nw2color'].values())[:-1]),generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 avg_consistent_roi_vals = all_ind_roi_vals[all_ind_roi_vals.nw_consistent_rois!='None']
@@ -721,20 +722,20 @@ sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid',
 plt.gca().get_legend().remove()
 sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
 plt.gca().set_ylabel('\n'.join(ylabel.split(' ')))
-plt.gca().set_xticklabels(['SC<0', 'SC~0', 'SC>0', 'primates'])
-plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
-plt.gca().set_xlabel('one sample t-test regions')
-plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=1.5,zorder=10)
+plt.gca().set_xticklabels(['<0', '~0', '>0', 'primates'])
+plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=15)
+plt.gca().set_xlabel('signaling costs regions')
+plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=2,zorder=10)
 #roi_id are NaN for non-human primates data
-plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=1.5,zorder=10)
+plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=2,zorder=10)
 
 plt.figure(figsize=(2.5,4),dpi=fig_res_dpi)
 apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(['sid','ostt_signed'],as_index=False).median()
 sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
             palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
 plt.gca().get_legend().remove()
-plt.gca().set(xlabel='one sample t-test regions', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['SC<0', 'SC~0', 'SC>0'])
-plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
+plt.gca().set(xlabel='signaling costs regions', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['<0', '~0', '>0'])
+#plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
 
 apes_diff_sign = []
 for ix in range(-1,2):
@@ -847,7 +848,7 @@ src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.pat
                          x_surr_corrs=cohorts_metadata['all']['smash_bb-skew_{}-{}'.format(x_var,y_var)])
 plt.gca().scatter(bbl_roi_skew[[lskew,hskew]],avg_roi_ed_vals[[lskew,hskew]],s=300, alpha=0.6,
                   c=np.concatenate((getattr(plt.cm,'magma')(range(256))[24][np.newaxis,:],getattr(plt.cm,'magma')(range(256))[231][np.newaxis,:]),axis=0))
-src.functions.plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(results_dir,'figures',f'fig3C_bb-skew_surf_delete'),cmap='magma',
+src.functions.plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(results_dir,'figures',f'fig3C_surf_bb-skew'),cmap='magma',
                         show_colorbar=True,vlow=5,vhigh=95,generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 valid_ind_sc_skew = src.functions.valid_data_index(bbl_roi_skew[:180],avg_roi_ed_vals,n_mad='min')
@@ -874,8 +875,8 @@ _,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.fl
 plt.figure(figsize=(6,2.5),dpi=fig_res_dpi)
 sns.histplot(data=corr_ed_gexp, x="r",color=(0.6,0.6,0.6))
 ## Statsitical significance thresholds
-plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r<0)].r.max(), 0, 1, color='k', linestyle='dashed', lw=1.5)
-plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)].r.min(), 0, 1, color='k', linestyle='dashed', lw=1.5)
+plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r<0)].r.max(), 0, 1, color='k', linestyle='dashed', lw=2)
+plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)].r.min(), 0, 1, color='k', linestyle='dashed', lw=2)
 
 hist_data = np.histogram_bin_edges(corr_ed_gexp.r.to_numpy(), bins=len(plt.gca().patches))
 sel_genes_colors = [plt.cm.Dark2(range(8))[3].flatten(),plt.cm.Dark2(range(8))[3].flatten(),plt.cm.tab20c([4]).flatten()]
@@ -894,13 +895,13 @@ gene_exp_null_corr = ahba_gene_expression[corr_ed_gexp[(corr_ed_gexp.r>0) & (cor
 gene_exp_null_corr[np.isnan(gene_exp_null_corr)]=np.min(gene_exp_null_corr)-1 if np.min(gene_exp_null_corr)<0 else 0
 plt.figure(figsize=(0.5,3),dpi=fig_res_dpi)
 sns.heatmap(avg_roi_ed_vals[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
-src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=False,vlow=5,vhigh=95,generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
+src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_signalingcosts-avg'),cmap=ListedColormap(extended_cm),
+                        show_colorbar=False,vlow=5,vhigh=95,generate_surf=False,fig_res_dpi=fig_res_dpi)
 
 plt.figure(figsize=(0.5,3),dpi=fig_res_dpi)
 sns.heatmap(gene_exp_null_corr[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
 src.functions.plot_surf(gene_exp_null_corr,
-                        os.path.join(results_dir,'figures',f'fig4A_nullcorr-{corr_ed_gexp[(corr_ed_gexp.r>0) & (corr_ed_gexp.r<=0.000011)].gene.item()}_delete'),
+                        os.path.join(results_dir,'figures',f'fig4A_surf_nullcorr-{corr_ed_gexp[(corr_ed_gexp.r>0) & (corr_ed_gexp.r<=0.000011)].gene.item()}'),
                         show_colorbar=False,cmap=ListedColormap(extended_cm),vlow=5,vhigh=95,generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
@@ -925,8 +926,8 @@ cb.ax.set_yticklabels(go_cell_comps_tickl)
 for yix,ytickl in enumerate(cb.ax.get_yticklabels()):
     ytickl.set_color(clrs_bar[yix])
     ytickl.set_fontsize(10+yix+1)
-cb.ax.text(-1.5, 0.05, go_cell_comps.loc[0,"Enrichment"],color=clrs_bar[0], transform=cb.ax.transAxes, va='top', ha='center')
-cb.ax.text(-1.5, 0.95, go_cell_comps.loc[go_cell_comps.shape[0]-1,"Enrichment"],color=clrs_bar[-1], transform=cb.ax.transAxes, va='bottom', ha='center')
+cb.ax.text(-2, 0.05, go_cell_comps.loc[0,"Enrichment"],color=clrs_bar[0], transform=cb.ax.transAxes, va='top', ha='center')
+cb.ax.text(-2, 0.95, go_cell_comps.loc[go_cell_comps.shape[0]-1,"Enrichment"],color=clrs_bar[-1], transform=cb.ax.transAxes, va='bottom', ha='center')
 cb.ax.set_title( 'Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
 #cb.ax.set_title( r'$\bf{Enrichment}$ Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
 
@@ -1000,7 +1001,7 @@ wd0,t0 = ax.pie(go_genes_pie_data.flatten(), radius=1,
                                        np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.8])[np.newaxis,:],np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.8])[np.newaxis,:],
                                        plt.cm.tab20c(range(20))[14:16],np.concatenate((plt.cm.tab20c(range(20))[15][:3],[0.5]))[np.newaxis,:],
                                        np.repeat(np.array([plt.cm.tab20c(range(20))[16]]),4,axis=0)),axis=0),
-                labels=go_genes_pie_labels,wedgeprops=dict(width=0.3, edgecolor='w'),labeldistance=1.1)
+                labels=go_genes_pie_labels,wedgeprops=dict(width=0.3, edgecolor='w'),labeldistance=1.2)
 
 wd,_,_ =ax.pie(go_genes_pie_data.sum(axis=1), radius=0.7, colors=plt.cm.tab20c(range(20))[[4,12,16]],
        wedgeprops=dict(width=0.3, edgecolor='w'),autopct='%d%%',textprops=dict(color="w"),pctdistance=0.75)
@@ -1076,12 +1077,12 @@ axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.col
 for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labels)[sorted_idx]) if ext_pet_label in ['5HTT','DAT','NAT','VAChT']]:
     axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
 
-axs.axhline(len(ext_pet_labels)-p_smash_cut-0.5, 0, 1, color='k', linestyle='dashed', lw=1.5)
-axs.text(0.4, len(ext_pet_labels)-p_smash_cut-0.6, 'p_smash', ha='left',va='top', color='k',fontsize=11)
+axs.axhline(len(ext_pet_labels)-p_smash_cut-0.5, 0, 1, color='k', linestyle='dashed', lw=2)
+axs.text(0.4, len(ext_pet_labels)-p_smash_cut-0.6, 'p_smash', ha='left',va='top', color='k',fontsize=20)
 
 src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
-                        os.path.join(results_dir,'figures',f'fig5C_surf_delete-avg'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=True,fig_res_dpi=fig_res_dpi)
+                        os.path.join(results_dir,'figures',f'fig5C_surf_PLS'),cmap=ListedColormap(extended_cm),
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
 ```
@@ -1100,15 +1101,15 @@ sel_genexp_df[sel_genexp_df.columns[sel_genexp_df.columns!='roi_id']] = sel_gene
 genexp_pet_df = ext_pet_roi_df[ext_pet_roi_df.roi_id<181].loc[:,selected_tracers+['roi_id']].merge(sel_genexp_df,on='roi_id',how='left').merge(pd.DataFrame({'signaling_costs':src.functions.metric2mmp(all_avg_roi_vals,'signaling_costs','roi_id'),'roi_id':np.arange(1,181)}),on='roi_id',how='left')
 genexp_pet_df = genexp_pet_df.melt(['roi_id','signaling_costs'], var_name='neurotransmitter',ignore_index=False)
 genexp_pet_df['variable'] = 'PET'
-genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'variable'] = 'gene_expression'
+genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'variable'] = 'transcriptomic'
 genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'neurotransmitter'] = genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'neurotransmitter'].map(
 dict(zip(selected_genes, selected_tracers)))
 
 
 for nt in selected_tracers:
     pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
-    src.functions.multiple_joinplot(genexp_pet_df,'value','signaling_costs',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='gene_expression')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
-                      [],['gene_expression','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
+    src.functions.multiple_joinplot(genexp_pet_df,'value','signaling_costs',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='transcriptomic')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
+                      [],['transcriptomic','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
                       xlabel=nt+' [Z-score]',ylabel='signaling costs\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.4,-0.7),plot_legend=True,mad_thr=3.5,print_ci=False)#,xlim=(-3,5),ylim=ylim,
     
     
