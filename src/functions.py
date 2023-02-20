@@ -91,7 +91,7 @@ def plot_joint(x,y,s=0,x_label='',y_label='', robust=False,xlim=None,ylim=None,r
             r,p = stats.pearsonr(x, y)
         except:
             r,p = stats.pearsonr(x[(~np.isnan(x)) & (~np.isnan(y))], y[(~np.isnan(x)) & (~np.isnan(y))])
-    p_text = 'p={0:.3f}'.format(p) if p>=0.001 else 'p<0.001' if not p_smash else r'$p_{smash}$=%0.3f' % p_smash  if p_smash>=0.001 else r'$p_{smash}$<0.001' #'$p_{smash}$ = {0:.3f}'.format(p_smash) if p_smash>=0.001 else '$p_{smash}$<0.001'
+    p_text = 'p={0:.3f}'.format(p) if p>=0.0001 else 'p<0.0001' if not p_smash else r'$p_{smash}$=%0.3f' % p_smash  if p_smash>=0.0001 else r'$p_{smash}$<0.0001' 
     g.ax_joint.text(g.ax_joint.get_xlim()[0]+0.02*g.ax_joint.get_xlim()[1], g.ax_joint.get_ylim()[1]-0.02*(g.ax_joint.get_ylim()[1]-g.ax_joint.get_ylim()[0]), 'r={0:.2f}, {1:s}'.format(r,p_text), ha='left',va='top', color='k')
     if return_plot_var:
         return g
@@ -195,13 +195,13 @@ def vrange(x,l=5,u=95):
 
 def plot_rnd_dist(surr_corrs,r_param,p_non_param,ax,xlabel='',ylabel='',xlim=[-0.5,0.5],print_text=True):
     sns.kdeplot(surr_corrs,shade=True,color=(0.8, 0.8, 0.8),ax=ax) 
-    ax.axvline(r_param, 0, 0.95, color='r', linestyle='dashed', lw=1.25)
+    ax.axvline(r_param, 0, 0.95, color='r', linestyle='dashed', lw=2)
     # make the plot nicer...
     ax.set_xticks(np.arange(xlim[0], xlim[1]+0.1, xlim[1]))
     ax.set_xlim(xlim[0]-0.1, xlim[1]+0.1)
     [s.set_visible(False) for s in [ax.spines['top'], ax.spines['left'], ax.spines['right']]]
     if print_text: 
-        p_text = r'$p_{smash}$=%0.3f' % p_non_param  if p_non_param>=0.001 else r'$p_{smash}$<0.001'
+        p_text = r'$p_{smash}$=%0.3f' % p_non_param  if p_non_param>=0.0001 else r'$p_{smash}$<0.0001'
         ax.text(0, ax.get_ylim()[1]+0.25, 'r={0:.2f}, {1:s}'.format(r_param,p_text), ha='center',va='top', color='k')
     plt.gca().grid(False,axis='x')
     plt.gca().set(xlabel='Correlation',ylabel='Density')
@@ -265,8 +265,7 @@ def read_mask_nii(mask_fn,roi_labels=[],z_score=False,**nii_fns):
         data_dict[prop] = data_masked
     return data_dict
         
-def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,color_scatterplot,xlabel='',ylabel='',xlim=None,ylim=None,s=0.1,legend_bbox_to_anchor=(-0.2,-0.5),plot_legend=True,mad_thr=None,prefix_legend_title='',print_ci=False):
-    ps_legend_flag = True
+def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,color_scatterplot,xlabel='',ylabel='',xlim=None,ylim=None,s=0.1,legend_bbox_to_anchor=(-0.2,-0.5),plot_legend=True,mad_thr=None,prefix_legend_title='',print_ci=False,ps_legend_flag = True):
     for fidx,filtered_index_list in enumerate(filtered_index_lists):
         df_filtered = df[filtered_index_list].copy()
         if mad_thr:
@@ -274,14 +273,18 @@ def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,pa
         
         
         corr_mod = pg.corr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y],alpha=0.1).reset_index()
-        #rp,pp = stats.pearsonr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y])
         rp = corr_mod["r"].item()
         pp = corr_mod["p-val"].item()
         p_label = 'p_{smash}' if len(np_null_dists)>0 else 'p'
         pnp = nonparp(rp, np_null_dists[fidx]) if len(np_null_dists)>0 else pp
-        pnp = pnp if pnp>0 else 0.001
-        ps_legend_flag = (ps_legend_flag) & (pnp==0.001) & (len(np_null_dists)>0)
-        label = f'{filter_labels[fidx]}={rp:.2f} ({pnp:.3f})' if((pnp>0) & (~ps_legend_flag)) else f'{filter_labels[fidx]}={rp:.2f}'
+        pnp = pnp if pnp>0.0001 else 0.0001
+        ps_legend_flag = (ps_legend_flag) & (pnp==0.0001) #& (len(np_null_dists)>0)
+        if((pnp>0.0001) & (~ps_legend_flag)):
+            label = f'{filter_labels[fidx]}={rp:.2f} ({pnp:.3f})'
+        elif((pnp==0.0001) & (~ps_legend_flag)):
+            label = f'{filter_labels[fidx]}={rp:.2f} (<0.0001)'
+        else:
+            label = f'{filter_labels[fidx]}={rp:.2f}'
         if print_ci: label = label.replace(')',f', CI: [{corr_mod["CI95%"].item()[0]:.2f}, {corr_mod["CI95%"].item()[1]:.2f}])')
         color_scatterplot_mod = color_scatterplot if len(color_scatterplot)>0 else palette_regplot[fidx]
         if fidx==0:
@@ -301,12 +304,12 @@ def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,pa
             sns.kdeplot(y=df_filtered[y],shade=False,linewidth=2, ax=g.ax_marg_y,color=palette_regplot[fidx])
     g.ax_joint.set(xlabel=xlabel,ylabel=ylabel)
     if plot_legend:
-        legend_title = r'$Pearson\ r\ ('+p_label+'$<0.001)' if(ps_legend_flag) else r'$Pearson\ r\ ('+p_label+'$)'
+        legend_title = r'$Pearson\ r\ ('+p_label+'$<0.0001)' if(ps_legend_flag) else r'$Pearson\ r\ ('+p_label+'$)'
         #legend_title = legend_title if len(prefix_legend_title)>0 else prefix_legend_title
         g.ax_marg_x.legend(loc='upper left',bbox_to_anchor=(1, 1.25))
         legend_handles = g.ax_marg_x.get_legend_handles_labels()
         g.ax_marg_x.get_legend().remove()
-        leg = g.ax_joint.legend(legend_handles[0],legend_handles[1],bbox_to_anchor=legend_bbox_to_anchor, loc="lower left",title=legend_title,title_fontsize=16)#,title='orig_leg[1][7]'
+        leg = g.ax_joint.legend(legend_handles[0],legend_handles[1],bbox_to_anchor=legend_bbox_to_anchor, loc="lower left",title=legend_title,title_fontsize=20)#,title='orig_leg[1][7]'
         leg._legend_box.align = "left"
         
 def remove_outliers(x,mad_thr):

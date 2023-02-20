@@ -201,18 +201,10 @@ else:
     if 'index' in all_avg_vox_vals_with_gx_mask.columns: all_avg_vox_vals_with_gx_mask.drop(['index'], axis = 1, inplace=True)
     all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
     
-    ### UPDATE!
-    sid2sex = {}
-    for site in ['TUM','VIE']:
-        for coh in cohorts_metadata[site].keys():
-            for sidx,sid in enumerate(cohorts_metadata[site][coh]['sids']):
-                sid2sex[cohorts_metadata[site][coh]['sub_pref'] % sid]= 'F' if cohorts_metadata[site][coh]['sex'][sidx]==-1 else 'M'
-    
-    subj_ages={'HC002':23,'HC003':24,'HC004':28,'HC006':22,'HC007':22,'HC009':42,'HC010':20,'HC012':36,'HC013':24,'HC014':25,
-         's003':35,'s007':46,'s012':38,'s014':35,'s017':52,'s020':41,'s023':38,'s025':50,'s026':52,'s028':24,
-         's029':42,'s030':28,'s031':25,'s032':26,'s033':22,'s034':27,'s035':24,'s036':31,'s037':27,'s038':27
-        }
-    ### UPDATE end
+    tum_participants_info = pd.read_csv(os.path.join(root_dir,'._participants.tsv'),sep='\t')
+    vie_participants_info = pd.read_csv(os.path.join(root_dir,'external','Sundar2018','VIE_participants.tsv'),sep='\t')
+    age_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.age)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.age))}
+    sex_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.sex)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.sex))}
 
 cohorts_metadata['TUM']['exp1'] = cohorts_metadata['TUM'].pop('a1')
 cohorts_metadata['TUM']['exp2'] = cohorts_metadata['TUM'].pop('a2')
@@ -288,14 +280,14 @@ g = src.functions.plot_joint(example_ind_roi_vals[x_var],example_ind_roi_vals[y_
 #### 1B. Group analysis voxelwise | S1 FC/DynFC/SC ROIwise
 
 ```python
-roiwise_results = False
-other_results = ''#'std_dynamic_degree_z'
+roiwise_results = True
+other_results = ''# options '' for ROIwise dFC or 'std_dynamic_degree_z'/'sc_strength_z'
 roiwise_results = roiwise_results if not other_results else True
 all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
 sel_x_var = x_var if not other_results else other_results
-sel_xlabel = xlabel if not other_results else 'SC strength [Z-score]'
-sel_xlabel = xlabel if other_results != 'std_dynamic_degree_z' else 'std(dynamic DC) [Z-score]'
-sel_sites = list(cohorts_metadata.keys())[:-1] if not other_results else list(cohorts_metadata.keys())[:1]
+sel_xlabel = xlabel if not other_results else 'dSC [Z-score]'
+sel_xlabel = sel_xlabel if other_results != 'std_dynamic_degree_z' else 'Dynamic dFC [Z-score]'
+sel_sites = list(cohorts_metadata.keys())[:-1] if sel_xlabel!='dSC [Z-score]' else list(cohorts_metadata.keys())[:1]
 palette_regplot_index = 5 
 for site in sel_sites:
     filtered_index_lists = []
@@ -313,10 +305,15 @@ for site in sel_sites:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index+7]).flatten()]
     src.functions.multiple_joinplot(all_avg_sel_vals,sel_x_var,y_var,filtered_index_lists,np_null_dists,filter_labels,palette_regplot,
                                     plt.cm.tab20c([palette_regplot_index+2]).flatten(),s=25 if roiwise_results else 0.1,
-                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else None,ylim=(10,50) if not other_results else None,
+                                    xlabel=sel_xlabel,ylabel=ylabel,xlim=(-2,3) if not other_results else (-2,2),ylim=(15,45),#(10,50) if not other_results else (15,45),
                                     legend_bbox_to_anchor=(0,-0.85) if site=='TUM' else (-0.25,-0.675))
     palette_regplot_index += 4
    
+```
+
+```python
+#cohorts_metadata[site][coh].keys()
+not ''
 ```
 
 ***Statistical differences in the variance explained by models adding the dynamic DC and SC***
@@ -398,9 +395,9 @@ print(f'There were not statistical differences in the variance explained by the 
 ```python
 selected_df = all_ind_vox_vals
 s = 0.1
-selected_site = 'VIE' #options: TUM or VIE
-coh0 = 'rep1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
-coh1 = 'rep2' #options: exp2
+selected_site = 'TUM' #options: TUM or VIE
+coh0 = 'exp1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
+coh1 = 'exp2' #options: exp2
 #selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']))
 s1 = f'{selected_site}.{coh0}'
 s2 = f'{selected_site}.{coh1}'
@@ -426,16 +423,16 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
         smash_dists+=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list,color_list,scatter_color,
                       #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.25,-0.675),plot_legend=True,s=s)
     elif(sid in cohorts_metadata[selected_site][coh1]['sids']):
         filtered_index=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
         smash_dists=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[1:],color_list[1:],scatter_color,
                       #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.25,-0.675),plot_legend=True,s=s)
     else:
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[:1],color_list[:1],scatter_color,
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.09,-0.5),plot_legend=False,s=s)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.25,-0.675),plot_legend=True,s=s)
  
 ```
 
@@ -455,8 +452,8 @@ if 'reg_ind_lev_df' not in locals():
 
 reg_ind_lev_df['variance'] = reg_ind_lev_df['variance'].astype('float')
             
-reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sid2sex)
-reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(subj_ages)
+reg_ind_lev_df['sex'] = reg_ind_lev_df['sid'].map(sex_participants_mapping)
+reg_ind_lev_df['age'] = reg_ind_lev_df['sid'].map(age_participants_mapping)
 reg_ind_lev_df['r']=reg_ind_lev_df['r'].astype('float')
 reg_ind_lev_df['slope']=reg_ind_lev_df['slope'].astype('float')
     
@@ -877,8 +874,8 @@ _,corr_ed_gexp['p_fdr'] = pg.multicomp(corr_ed_gexp['p'].to_numpy().astype(np.fl
 plt.figure(figsize=(6,2.5),dpi=fig_res_dpi)
 sns.histplot(data=corr_ed_gexp, x="r",color=(0.6,0.6,0.6))
 ## Statsitical significance thresholds
-plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r<0)].r.max(), 0, 1, color='k', linestyle='dashed', lw=1)
-plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)].r.min(), 0, 1, color='k', linestyle='dashed', lw=1)
+plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r<0)].r.max(), 0, 1, color='k', linestyle='dashed', lw=1.5)
+plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)].r.min(), 0, 1, color='k', linestyle='dashed', lw=1.5)
 
 hist_data = np.histogram_bin_edges(corr_ed_gexp.r.to_numpy(), bins=len(plt.gca().patches))
 sel_genes_colors = [plt.cm.Dark2(range(8))[3].flatten(),plt.cm.Dark2(range(8))[3].flatten(),plt.cm.tab20c([4]).flatten()]
