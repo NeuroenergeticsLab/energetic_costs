@@ -80,49 +80,20 @@ if sys.platform=='darwin':
     os.environ["QT_QPA_PLATFORM"]='offscreen'
 
 os.environ["OUTDATED_IGNORE"]='1'
-#os.environ["TEMP"]=os.path.join(os.environ["HOME"],'tmp')
 os.environ["TMP"]=os.path.join(os.environ["HOME"],'tmp')
 import tempfile
 tempfile.tempdir=os.environ["TMP"]
-#tempfile.gettempdir()
 
 root_dir = '../data'
 results_dir = '../results'
-img_dir = os.path.join(root_dir,'img_files')
-
-thr=0.25
-thr_i = "%i" % (thr*100)
-
-fc_res_label = 'cpac_v1.4.0'
-dti_res_label = 'mrtrix3_v0.4.2'
-pipeline='_selector_CSF-2mmE-M_aC-CSF+WM-2mm-DPC5_M-SDB_P-2_BP-B0.01-T0.1' if fc_res_label=='cpac_v1.6.1' else '_compcor_ncomponents_5_selector_pc10.linear1.wm0.global0.motion1.quadratic1.gm0.compcor1.csf1'
-ref_img = '/usr/share/fsl/5.0/data/standard/MNI152_T1_2mm_brain.nii.gz'
 #!lh_dist_full = np.loadtxt('ext_data/brainsmash/example_data/LeftParcelGeodesicDistmat.txt')
-
 
 conn_metric = 'degree'#'degree' 'dti' 'alff' 'gmvar' shannon_entropy
 dc_type = 'weighted'#'weighted' #binarize
 pet_metric = 'cmrglc'
 atlas_suf = 'mmp'
 vol_res = '3mm'
-sthr_suf = '' #'_sthr-1'
-smooth_suf = '_fwhm-6'
-recon_tag='_45min'#'45sfrscanner'#'_45min'
 vol_space = 'mni-'+vol_res
-recon_label='_1120'
-recon_tag='_45min'
-qx_t0 = 22 #21 #22
-qx_tend = 42 #45 #42
-pvc = '_pvc-pveseg'#'_pvc-pveseg'
-pvc_suf = '_pvc-pveseg' #'_pvc-pveseg'
-calc_z = False # True for DTI
-nmad = 2.5 if conn_metric == 'alff' else ''#2 if conn_metric == 'alff' else '' 80
-freq_band= '_0.01.0.1' if conn_metric == 'alff' else '' 
-z_suff=''
-GSR=''# _GSR-75 '_GSR-90'
-w_length=20
-w_step=10
-dyn_wc =''#'_wl'+str(w_length)+'ws'+str(w_step)+'_dyn_STD' #'_wl'+str(w_length)+'ws'+str(w_step)+'_dyn_VAR'
 dc_z = '_z' 
 y_var = pet_metric
 x_var = conn_metric+dc_z
@@ -130,10 +101,6 @@ if dyn_wc!='':
     x_label='std(dFC_window) [a.u.]' if  dc_z=='' else 'std(dFC_window) [Z-score]'
 elif conn_metric=='DTI':
     x_label='DTI communicability [a.u.]'
-elif conn_metric=='alff':
-    x_label='ALFF [a.u.]' if  dc_z=='' else 'ALFF [Z-score]'
-elif conn_metric=='shannon_entropy':
-    x_label='Shannon entropy [bits]' if not len(dc_z) else 'Shannon entropy [Z-score]'
 else:
     x_label=''
 xlabel='dFC [Z-score]' if not len(x_label) else x_label
@@ -205,23 +172,6 @@ else:
     vie_participants_info = pd.read_csv(os.path.join(root_dir,'external','Sundar2018','VIE_participants.tsv'),sep='\t')
     age_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.age)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.age))}
     sex_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.sex)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.sex))}
-
-cohorts_metadata['TUM']['exp1'] = cohorts_metadata['TUM'].pop('a1')
-cohorts_metadata['TUM']['exp2'] = cohorts_metadata['TUM'].pop('a2')
-cohorts_metadata['TUM']['rep'] = cohorts_metadata['TUM'].pop('b')
-cohorts_metadata['VIE']['rep1'] = cohorts_metadata['VIE'].pop('a1')
-cohorts_metadata['VIE']['rep2'] = cohorts_metadata['VIE'].pop('a2')
-cohort_mapping = {'TUM.a1':'TUM.exp1','TUM.a2':'TUM.exp2','TUM.b':'TUM.rep','VIE.a1':'VIE.rep1','VIE.a2':'VIE.rep2'}
-all_ind_vox_vals['cohort'] = all_ind_vox_vals['cohort'].map(cohort_mapping)
-all_ind_roi_vals['cohort'] = all_ind_roi_vals['cohort'].map(cohort_mapping)
-all_avg_vox_vals['cohort'] = all_avg_vox_vals['cohort'].map(cohort_mapping)
-all_avg_roi_vals['cohort'] = all_avg_roi_vals['cohort'].map(cohort_mapping)
-all_avg_vox_vals_with_gx_mask['cohort'] = all_avg_vox_vals_with_gx_mask['cohort'].map(cohort_mapping)
-all_ind_vox_vals.rename(columns={'energy_density': 'signaling_costs'},inplace=True)
-all_ind_roi_vals.rename(columns={'energy_density': 'signaling_costs'},inplace=True)
-all_avg_vox_vals.rename(columns={'energy_density': 'signaling_costs'},inplace=True)
-all_avg_roi_vals.rename(columns={'energy_density': 'signaling_costs'},inplace=True)
-all_avg_vox_vals_with_gx_mask.rename(columns={'energy_density': 'signaling_costs'},inplace=True)
 
 ```
 
@@ -1044,7 +994,7 @@ pls_yloadings_p_df['p_smash'] = np.nan
 for p_smash_cut,isx in enumerate(sorted_idx[::-1]): ##reverse vector
     if f'smash_pls0_pet-{ext_pet_labels[isx]}' not in cohorts_metadata['all'].keys():
         cohorts_metadata['all'][f'smash_pls0_pet-{ext_pet_labels[isx]}'] = src.functions.smash_comp(src.functions.metric2mmp(ext_pet_roi_df,'pls_x_score_0','roi_id'),src.functions.metric2mmp(ext_pet_roi_df,ext_pet_labels[isx],'roi_id'),
-                                                                          lh_dist_full,y_nii_fn=os.path.join(img_dir,f'smash_pls0_pet-{ext_pet_labels[isx]}.png'),l=5,u=95,n_mad='min',
+                                                                          lh_dist_full,y_nii_fn=os.path.join(results_dir,'figures',f'smash_pls0_pet-{ext_pet_labels[isx]}.png'),l=5,u=95,n_mad='min',
                                                                           p_uthr=1,plot=False,cmap=ListedColormap(extended_cm),print_text=False,plot_rnd=False,plot_surface=False)
     rpar = pls_yloadings_p_df.loc[pls_yloadings_p_df.label==ext_pet_labels[isx],'y_loading'].item()
     pnpar = nonparp(rpar, cohorts_metadata['all'][f'smash_pls0_pet-{ext_pet_labels[isx]}'])
