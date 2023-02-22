@@ -97,15 +97,8 @@ vol_space = 'mni-'+vol_res
 dc_z = '_z' 
 y_var = pet_metric
 x_var = conn_metric+dc_z
-if dyn_wc!='':
-    x_label='std(dFC_window) [a.u.]' if  dc_z=='' else 'std(dFC_window) [Z-score]'
-elif conn_metric=='DTI':
-    x_label='DTI communicability [a.u.]'
-else:
-    x_label=''
-xlabel='dFC [Z-score]' if not len(x_label) else x_label
-ylabel='CMRglc [umol/(min*100g)]' if y_var == pet_metric else xlabel
-xlabel=xlabel if y_var == pet_metric else 'CMRglc [umol/(min*100g)]'
+xlabel='dFC [Z-score]'
+ylabel='CMRglc [umol/(min*100g)]'
 fig_res_dpi = 300
 generate_surf = False if (('BINDER_SERVICE_HOST' in os.environ.keys()) & ('workbench' not in os.environ["PATH"])) else True
 ```
@@ -141,37 +134,23 @@ ignore_nws = ['Other','None',None,'Limbic']
 
 ```python
 load_df = True
-save_df = False
-plot_signden = False
-plot_expansion = False
-expresion_log = True
-plot_mod_maps = False
-voxelwise = True
-s = 0.1 if voxelwise else 10
+s = 0.1
 sd_res_roi_df = pd.DataFrame({})
-#ylim=(5, 60) if voxelwise else (15,45)
-if not load_df:
-    all_avg_vox_vals = pd.DataFrame({})
-    all_avg_roi_vals = pd.DataFrame({})
-    total_n_subj = 0
-else:
-    total_n_subj = 47
-    all_avg_vox_vals = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_vox_nsubj-{}_{}-{}_v1.0.csv'.format(total_n_subj,conn_metric,dc_type)))
-    if 'index' in all_avg_vox_vals.columns: all_avg_vox_vals.drop(['index'], axis = 1, inplace=True)
-    all_avg_roi_vals = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_roi_nsubj-{}_{}-{}_v1.0.csv'.format(total_n_subj,conn_metric,dc_type)))
-    if 'index' in all_avg_roi_vals.columns: all_avg_roi_vals.drop(['index'], axis = 1, inplace=True)
-    all_ind_vox_vals = pd.read_csv(os.path.join(root_dir,'individual_all-cohorts_vox_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
-    if 'index' in all_ind_vox_vals.columns: all_ind_vox_vals.drop(['index'], axis = 1, inplace=True)
-    with open(os.path.join(root_dir,'gx_all-cohorts_data_nsubj-{}_{}-{}_v1.1.pickle'.format(total_n_subj,conn_metric,dc_type)), 'rb') as f:
-        cohorts_metadata = pickle.load(f)
-    all_avg_vox_vals_with_gx_mask = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_vox_gx-mask_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
-    if 'index' in all_avg_vox_vals_with_gx_mask.columns: all_avg_vox_vals_with_gx_mask.drop(['index'], axis = 1, inplace=True)
-    all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
-    
-    tum_participants_info = pd.read_csv(os.path.join(root_dir,'._participants.tsv'),sep='\t')
-    vie_participants_info = pd.read_csv(os.path.join(root_dir,'external','Sundar2018','VIE_participants.tsv'),sep='\t')
-    age_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.age)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.age))}
-    sex_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.sex)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.sex))}
+
+total_n_subj = 47
+all_avg_vox_vals = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_vox_nsubj-{}_{}-{}_v1.0.csv'.format(total_n_subj,conn_metric,dc_type)))
+all_avg_roi_vals = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_roi_nsubj-{}_{}-{}_v1.0.csv'.format(total_n_subj,conn_metric,dc_type)))
+all_ind_vox_vals = pd.read_csv(os.path.join(root_dir,'individual_all-cohorts_vox_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
+with open(os.path.join(root_dir,'gx_all-cohorts_data_nsubj-{}_{}-{}.pickle'.format(total_n_subj,conn_metric,dc_type)), 'rb') as f:
+    cohorts_metadata = pickle.load(f)
+all_avg_vox_vals_with_gx_mask = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_vox_gx-mask_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
+all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
+
+tum_participants_info = pd.read_csv(os.path.join(root_dir,'._participants.tsv'),sep='\t')
+vie_participants_info = pd.read_csv(os.path.join(root_dir,'external','Sundar2018','VIE_participants.tsv'),sep='\t')
+age_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.age)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.age))}
+sex_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.sex)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.sex))}
+
 
 ```
 
@@ -236,8 +215,12 @@ ps_legend_flag = True if other_results != 'sc_strength_z' else False #For the DT
 roiwise_results = roiwise_results if not other_results else True
 all_avg_sel_vals = all_avg_roi_vals if roiwise_results else all_avg_vox_vals
 sel_x_var = x_var if not other_results else other_results
-sel_xlabel = xlabel if not other_results else 'dSC [Z-score]'
-sel_xlabel = sel_xlabel if other_results != 'std_dynamic_degree_z' else 'Dynamic dFC [Z-score]'
+if not other_results:
+    sel_xlabel = xlabel
+    sel_smash_label = f'smash_{sel_x_var}-{y_var}'
+else:
+    sel_xlabel = 'dSC [Z-score]' if other_results!='std_dynamic_degree_z' else 'Dynamic dFC [Z-score]'
+    sel_smash_label = f'smash_{other_results}-{y_var}'
 sel_sites = list(cohorts_metadata.keys())[:-1] if sel_xlabel!='dSC [Z-score]' else list(cohorts_metadata.keys())[:1]
 palette_regplot_index = 5 
 for site in sel_sites:
@@ -248,7 +231,7 @@ for site in sel_sites:
     for cix,coh in enumerate(sorted(cohorts_metadata[site].keys())):
         cohort = f'{site}.{coh}'
         filtered_index_lists += [all_avg_sel_vals.cohort==cohort]
-        np_null_dists += [cohorts_metadata[site][coh]['smash_{}-{}'.format(sel_x_var,y_var)]]
+        np_null_dists += [cohorts_metadata[site][coh][sel_smash_label]]
         filter_labels += [cohort]
         if cix<2:
             palette_regplot += [plt.cm.tab20c([palette_regplot_index-cix]).flatten()]
@@ -260,11 +243,6 @@ for site in sel_sites:
                                     legend_bbox_to_anchor=(-0.1,-0.85) if site=='TUM' else (-0.15,-0.675),ps_legend_flag = ps_legend_flag) #-0.25 for DTI data
     palette_regplot_index += 4
    
-```
-
-```python
-#cohorts_metadata[site][coh].keys()
-not ''
 ```
 
 ***Statistical differences in the variance explained by models adding the dynamic DC and SC***
@@ -346,9 +324,9 @@ print(f'There were not statistical differences in the variance explained by the 
 ```python
 selected_df = all_ind_vox_vals
 s = 0.1
-selected_site = 'VIE' #options: TUM or VIE
-coh0 = 'rep1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
-coh1 = 'rep2' #options: exp2
+selected_site = 'TUM' #options: TUM or VIE
+coh0 = 'exp1' #options: exp1 or rep, if the latter (replication cohort TUM), it will ignore the coh1 variable
+coh1 = 'exp2' #options: exp2
 #selected_site_sids = list(np.unique(cohorts_metadata[selected_site][coh0]['sids']))
 s1 = f'{selected_site}.{coh0}'
 s2 = f'{selected_site}.{coh1}'
@@ -374,16 +352,16 @@ for sid in selected_site_sids:#list(cohorts_metadata[selected_site]['a1']['sids'
         smash_dists+=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list,color_list,scatter_color,
                       #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=False)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=True)
     elif(sid in cohorts_metadata[selected_site][coh1]['sids']):
         filtered_index=[((selected_df.cohort==s2) & (selected_df.sid==subj_id))]
         smash_dists=[cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}']]
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[1:],color_list[1:],scatter_color,
                       #[plt.cm.tab20c([5]).flatten(),plt.cm.tab20c([4]).flatten()],plt.cm.tab20c([7]).flatten(),
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=False)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=True)
     else:
         src.functions.multiple_joinplot(selected_df,x_var,y_var,filtered_index,smash_dists,cohorts_list[:1],color_list[:1],scatter_color,
-                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=False)
+                          xlabel=xlabel,ylabel=ylabel,xlim=(-3,5),ylim=ylim,legend_bbox_to_anchor=(-0.15,-0.675),plot_legend=True,s=s,ps_legend_flag=True)
  
 ```
 
@@ -477,7 +455,6 @@ plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
 #### 2B. Stability
 
 ```python
-#!!!cohort_mapping_inv = {v: k for k, v in cohort_mapping.items()}
 src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==f'{reference_site}.{reference_cohort}'],'signaling_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2A_surf-sc_{reference_site}.{reference_cohort}'),
                         cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title='signaling costs exploratory cohort',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 sd_smash_corr_bet_coh_df = pd.DataFrame({})
@@ -485,8 +462,6 @@ sd_smash_corr_bet_coh_palette = {}
 for cohort in cohort_order[1:]:
     r_param,p_param=stats.pearsonr(all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==f'{reference_site}.{reference_cohort}','signaling_costs'],
                                    all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==cohort,'signaling_costs'])
-    
-#!!!    cohorts_metadata['all'][f'smash_sc_{reference_site}.{reference_cohort}-{cohort}'] = cohorts_metadata['all'].pop(f'smash_sd_{cohort_mapping_inv[reference_site+"."+reference_cohort]}-{cohort_mapping_inv[cohort]}')
     
     sd_smash_corr_bet_coh_df[f'{cohort}={r_param:.2f}'] = cohorts_metadata['all']['smash_sc_{}-{}'.format(f'{reference_site}.{reference_cohort}',cohort)]
     sd_smash_corr_bet_coh_palette[f'{cohort}={r_param:.2f}'] = cohorts_metadata[cohort.split('.')[0]][cohort.split('.')[1]]['color']
@@ -630,24 +605,15 @@ allometric_Karbowski_df['log(volume)'] = np.log10(allometric_Karbowski_df['volum
 plt.figure(dpi=fig_res_dpi)
 plt.gca().set(xlim=(-1,3.5))#(-2,5)
 sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,truncate=False,scatter_kws={'color':'gray','edgecolors':scatter_border_colors,'linewidth':scatter_border_widths},line_kws={'color':'k','linewidth':0.5})
-#plt.gca().plot(allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(volume)'],
-#               allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['Human (Karbowski 2007)']),'log(total_glucose)'],
-#              '.g',markersize=15,alpha=.8,label='Human (Karbowski 2007)')
 plt.gca().plot(np.log10(581),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(volume)'],
                np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(total_glucose)'],
               '.',color=plt.cm.tab20c(range(20))[4],markersize=12,label='Human (our data,only GM volume)')
-#             markeredgewidth=1.5, markeredgecolor=(r, g, b, 1)
 plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism\n[umol/min]')
-#plt.legend(loc='upper left', bbox_to_anchor=(-0.05, 1.3))
 
 linreg_Karbowski = pg.linear_regression(allometric_Karbowski_df['log(volume)'],allometric_Karbowski_df['log(total_glucose)'],coef_only=False,remove_na=True,alpha=0.1,as_dataframe=False)
-
-#allometric_fit_params_Karbowski,_ = curve_fit(src.functions.allometric_fit, allometric_Karbowski_df['volume'],allometric_Karbowski_df['total_glucose'])
-#allometric_model = r'$\bf{glucose\ metabolism\ \propto\ brain\ volume^{%0.2f}}$' % (allometric_fit_params_Karbowski[0]) #\textasciitilde
 allometric_model = r'$\bf{glucose\ metabolism\ \propto\ brain\ volume^{%0.2f}}$' % (linreg_Karbowski['coef'][1])
 
 plt.gca().text(plt.gca().get_xlim()[0]-1.5,plt.gca().get_ylim()[0]-1.1, allometric_model, ha='left',va='top', color='k')
-
 for index, row in allometric_Karbowski_df.iterrows():
     if row['species'] in (['baboon','goat','cat','Human (Karbowski 2007, whole brain)']):
         #plt.gca().annotate(row['species'], (row['log(volume)']-0.1, row['log(total_glucose)']),fontsize=10,ha = 'right')
@@ -658,7 +624,6 @@ for index, row in allometric_Karbowski_df.iterrows():
     else:
         plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.05),fontsize=18)
 plt.gca().annotate('Human\n(our data,\nGM only)', (np.log10(581)+0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.6),fontsize=18)
-#allometric_Karbowski_df
 pg.linear_regression(allometric_Karbowski_df['log(volume)'],allometric_Karbowski_df['log(total_glucose)'],coef_only=False,remove_na=True,alpha=0.1)
 
 ```
@@ -718,14 +683,6 @@ src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_
 
 valid_ind_sc_exp = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
 pg.linear_regression(chimp2human_expansion[:180][valid_ind_sc_exp],avg_roi_ed_vals[valid_ind_sc_exp],coef_only=False,remove_na=True,alpha=0.1)
-
-#!allometric_fit_params,_ = curve_fit(src.functions.allometric_fit, chimp2human_expansion[:180][valid_ind],avg_roi_ed_vals[valid_ind])
-#!plt.gca().plot(chimp2human_expansion[:180][valid_ind],allometric_fit_params[1] + chimp2human_expansion[:180][valid_ind]**allometric_fit_params[0],'.m')#[0.90196078, 0.33333333, 0.05098039])
-#!
-#!#allometric_model = r'energy_density ~  %0.2f + expansion^%0.2f' % (allometric_fit_params[1],allometric_fit_params[0])
-#!allometric_model = r'$\bf{energy\ density\ \textasciitilde\ brain\ expansion^{%0.2f}}$' % (allometric_fit_params[0])
-#!plt.gca().text(plt.gca().get_xlim()[0]-1,plt.gca().get_ylim()[0]-3, allometric_model, ha='left',va='top', color='m')
-
 
 ```
 
@@ -971,11 +928,14 @@ ext_pet_df = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen20
 ext_pet_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
 ext_pet_labels = ext_pet_df.columns[1:-2].to_list()
 #PLS
-if 'ed_ext_pet_vox_pls' not in locals():
+#if 'ed_ext_pet_vox_pls' not in locals():
+if 'signcosts_ext_pet_vox_pls' in cohorts_metadata['all'].keys():
+    ed_ext_pet_vox_pls = cohorts_metadata['all']['signcosts_ext_pet_vox_pls']
+else:
     ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df[ed_vox_df.vox_id.isin(ext_pet_df.vox_id)].to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-2],n_perm=5000,n_boot=5000,n_proc=12)
-n_vox_sign_comp = (ed_ext_pet_vox_pls.permres.pvals<=0.05).sum()
-print(ed_ext_pet_vox_pls.varexp[:n_vox_sign_comp])
-print(ed_ext_pet_vox_pls.permres.pvals[:n_vox_sign_comp])
+n_vox_sign_comp = (ed_ext_pet_vox_pls['permres']['pvals']<=0.05).sum()
+print(ed_ext_pet_vox_pls['varexp'][:n_vox_sign_comp])
+print(ed_ext_pet_vox_pls['permres']['pvals'][:n_vox_sign_comp])
 
 icx = 0 # Selected component
 
@@ -1017,7 +977,7 @@ err = (ed_ext_pet_vox_pls["bootres"]["y_loadings_ci"][:, icx, 1] - ed_ext_pet_vo
 sorted_idx = np.argsort(ed_ext_pet_vox_pls["y_loadings"][:, icx])#[::-1] 
 significance_index = np.zeros(len(ext_pet_labels), dtype=bool)    
 axs.barh(np.arange(len(err)), np.sort(ed_ext_pet_vox_pls["y_loadings"][:, icx]),xerr=err[sorted_idx],color=ext_pet_colors_mod[sorted_idx])
-axs.set_yticks(np.arange(len(ed_ext_pet_vox_pls.y_loadings)))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
+axs.set_yticks(np.arange(len(ed_ext_pet_vox_pls["y_loadings"])))#, labels=ext_pet_roi_df.columns[1:].to_numpy()[relidx])
 
 for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(ext_pet_labels) if ext_pet_label in ['5HT4','A4B2','MU']]:
     ext_pet_labels[ext_pet_idx] = r'$\bf{'+ext_pet_labels[ext_pet_idx]+'}$'
@@ -1030,7 +990,7 @@ for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labe
 axs.axhline(len(ext_pet_labels)-p_smash_cut-0.5, 0, 1, color='k', linestyle='dashed', lw=2)
 axs.text(0.4, len(ext_pet_labels)-p_smash_cut-0.6, 'p_smash', ha='left',va='top', color='k',fontsize=20)
 
-src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls.x_scores[:,icx]}),'ed_pls_score','roi_id'),
+src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_df.roi_id.to_numpy(),'ed_pls_score':ed_ext_pet_vox_pls['x_scores'][:,icx]}),'ed_pls_score','roi_id'),
                         os.path.join(results_dir,'figures',f'fig5C_surf_PLS'),cmap=ListedColormap(extended_cm),
                         show_colorbar=True,vlow=5,vhigh=95,fig_title='Main PLS score',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 

@@ -91,7 +91,10 @@ def plot_joint(x,y,s=0,x_label='',y_label='', robust=False,xlim=None,ylim=None,r
             r,p = stats.pearsonr(x, y)
         except:
             r,p = stats.pearsonr(x[(~np.isnan(x)) & (~np.isnan(y))], y[(~np.isnan(x)) & (~np.isnan(y))])
-    p_text = 'p={0:.3f}'.format(p) if p>=0.0001 else 'p<0.0001' if not p_smash else r'$p_{smash}$=%0.3f' % p_smash  if p_smash>=0.0001 else r'$p_{smash}$<0.0001' 
+    if not p_smash:
+        p_text = 'p={0:.3f}'.format(p) if p>=0.0001 else 'p<0.0001' 
+    else:
+        p_text = r'$p_{smash}$=%0.3f' % p_smash  if p_smash>=0.0001 else r'$p_{smash}$<0.0001' 
     g.ax_joint.text(g.ax_joint.get_xlim()[0]+0.02*g.ax_joint.get_xlim()[1], g.ax_joint.get_ylim()[1]-0.02*(g.ax_joint.get_ylim()[1]-g.ax_joint.get_ylim()[0]), 'r={0:.2f}, {1:s}'.format(r,p_text), ha='left',va='top', color='k')
     if return_plot_var:
         return g
@@ -177,7 +180,7 @@ def smash_comp(x,y,distmat,y_nii_fn='',xlabel='x',ylabel='y',cmap='summer',n_mad
         p_np = nonparp(test_r, x_surr_corrs)
         if plot:
             plt.figure(dpi=fig_res_dpi)
-            if p_np<0.08:
+            if(p_np<0.08):
                 plot_joint(x[valid_ind],y[valid_ind],s=28,robust=False,x_label=xlabel,y_label=ylabel,xlim=xlim,ylim=ylim,p_smash=p_np)
             else:
                 plot_joint(x[valid_ind],y[valid_ind],s=28,robust=False,x_label=xlabel,y_label=ylabel,xlim=xlim,ylim=ylim)
