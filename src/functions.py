@@ -273,8 +273,7 @@ def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,pa
         df_filtered = df[filtered_index_list].copy()
         if mad_thr:
             df_filtered = df_filtered[remove_outliers(df_filtered[x].to_numpy(),mad_thr)]        
-        
-        
+                
         corr_mod = pg.corr(df_filtered.loc[df_filtered[x].notnull(),x],df_filtered.loc[df_filtered[x].notnull(),y],alpha=0.1).reset_index()
         rp = corr_mod["r"].item()
         pp = corr_mod["p-val"].item()
@@ -282,12 +281,13 @@ def multiple_joinplot(df,x,y,filtered_index_lists,np_null_dists,filter_labels,pa
         pnp = nonparp(rp, np_null_dists[fidx]) if len(np_null_dists)>0 else pp
         pnp = pnp if pnp>0.0001 else 0.0001
         ps_legend_flag = (ps_legend_flag) & (pnp==0.0001) #& (len(np_null_dists)>0)
+        filter_eq_label = '=' if len(filter_labels[fidx])>0 else ''
         if((pnp>0.0001) & (~ps_legend_flag)):
-            label = f'{filter_labels[fidx]}={rp:.2f} ({pnp:.3f})'
+            label = f'{filter_labels[fidx]}{filter_eq_label}{rp:.2f} ({pnp:.3f})'
         elif((pnp==0.0001) & (~ps_legend_flag)):
-            label = f'{filter_labels[fidx]}={rp:.2f} (<0.0001)'
+            label = f'{filter_labels[fidx]}{filter_eq_label}{rp:.2f} (<0.0001)'
         else:
-            label = f'{filter_labels[fidx]}={rp:.2f}'
+            label = f'{filter_labels[fidx]}{filter_eq_label}{rp:.2f}'
         if print_ci: label = label.replace(')',f', CI: [{corr_mod["CI95%"].item()[0]:.2f}, {corr_mod["CI95%"].item()[1]:.2f}])')
         color_scatterplot_mod = color_scatterplot if len(color_scatterplot)>0 else palette_regplot[fidx]
         if fidx==0:

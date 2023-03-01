@@ -138,19 +138,18 @@ s = 0.1
 sd_res_roi_df = pd.DataFrame({})
 
 total_n_subj = 47
-all_avg_vox_vals = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_vox_nsubj-{}_{}-{}_v1.0.csv'.format(total_n_subj,conn_metric,dc_type)))
-all_avg_roi_vals = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_roi_nsubj-{}_{}-{}_v1.0.csv'.format(total_n_subj,conn_metric,dc_type)))
-all_ind_vox_vals = pd.read_csv(os.path.join(root_dir,'individual_all-cohorts_vox_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
-with open(os.path.join(root_dir,'gx_all-cohorts_data_nsubj-{}_{}-{}.pickle'.format(total_n_subj,conn_metric,dc_type)), 'rb') as f:
+all_avg_vox_vals = pd.read_csv(os.path.join(root_dir,f'gx_all-cohorts_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv'))
+all_avg_roi_vals = pd.read_csv(os.path.join(root_dir,f'gx_all-cohorts_roi_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv'))
+all_ind_vox_vals = pd.read_csv(os.path.join(root_dir,f'individual_all-cohorts_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv.zip'))
+with open(os.path.join(root_dir,f'gx_all-cohorts_data_nsubj-{total_n_subj}_{conn_metric}-{dc_type}_NO_delete_v01.pickle'), 'rb') as f:
     cohorts_metadata = pickle.load(f)
-all_avg_vox_vals_with_gx_mask = pd.read_csv(os.path.join(root_dir,'gx_all-cohorts_vox_gx-mask_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
+all_avg_vox_vals_with_gx_mask = pd.read_csv(os.path.join(root_dir,f'gx_all-cohorts_vox_gx-mask_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv.zip'))
 all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
 
 tum_participants_info = pd.read_csv(os.path.join(root_dir,'._participants.tsv'),sep='\t')
 vie_participants_info = pd.read_csv(os.path.join(root_dir,'external','Sundar2018','VIE_participants.tsv'),sep='\t')
 age_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.age)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.age))}
 sex_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.sex)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.sex))}
-
 
 ```
 
@@ -448,31 +447,42 @@ plt.figure(figsize=(3,3),dpi=fig_res_dpi)
 example_ind_vox_vals['residual'] = pg.linear_regression(example_ind_vox_vals[x_var],example_ind_vox_vals[y_var],coef_only=False,remove_na=True,as_dataframe=False)['residuals']
 sns.scatterplot(x_var,'residual',data=example_ind_vox_vals,s=15*s,legend=False,hue='residual', palette=sel_cm,
                 vmin=example_ind_vox_vals.residual.quantile(0.3),vmax=example_ind_vox_vals.residual.quantile(0.7))
-plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
+#plt.gca().set(xlabel=xlabel,ylabel='residual',ylim=(-19,19))
+plt.xlabel(xlabel, fontsize=16)
+plt.xticks(fontsize=16)
+plt.ylabel('residual CMRglc', fontsize=16)
+plt.yticks(fontsize=16)
+plt.ylim((-19,19))
+
+## Average voxel values across subjects from all cohorts using a common group GM mask
+avg_vox_vals_with_gx_mask = all_avg_vox_vals_with_gx_mask.groupby('vox_id',as_index=False).median()
+avg_vox_vals_with_gx_mask_reg = pg.linear_regression(avg_vox_vals_with_gx_mask[x_var],avg_vox_vals_with_gx_mask[y_var],coef_only=False,remove_na=True,as_dataframe=False)
+plt.figure(dpi=fig_res_dpi)
+src.functions.plot_joint(avg_vox_vals_with_gx_mask_reg['pred'],avg_vox_vals_with_gx_mask_reg['residuals'],s=10*s,robust=False,
+                         kdeplot=False,truncate=True,xlim0=False,x_label='fitted CMRglc',y_label='residual CMRglc')
 
 ```
 
 #### 2B. Stability
 
 ```python
-src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==f'{reference_site}.{reference_cohort}'],'signaling_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2A_surf-sc_{reference_site}.{reference_cohort}'),
-                        cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title='signaling costs exploratory cohort',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
+src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==f'{reference_site}.{reference_cohort}'],'energetic_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2A_surf-ecosts_{reference_site}.{reference_cohort}'),
+                        cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'energetic costs {reference_site}.{reference_cohort}',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 sd_smash_corr_bet_coh_df = pd.DataFrame({})
 sd_smash_corr_bet_coh_palette = {}
 for cohort in cohort_order[1:]:
-    r_param,p_param=stats.pearsonr(all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==f'{reference_site}.{reference_cohort}','signaling_costs'],
-                                   all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==cohort,'signaling_costs'])
-    
-    sd_smash_corr_bet_coh_df[f'{cohort}={r_param:.2f}'] = cohorts_metadata['all']['smash_sc_{}-{}'.format(f'{reference_site}.{reference_cohort}',cohort)]
+    r_param,p_param=stats.pearsonr(all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==f'{reference_site}.{reference_cohort}','energetic_costs'],
+                                   all_avg_vox_vals_with_gx_mask.loc[all_avg_vox_vals_with_gx_mask.cohort==cohort,'energetic_costs'])
+    sd_smash_corr_bet_coh_df[f'{cohort}={r_param:.2f}'] = cohorts_metadata['all'][f'smash_ecosts_{reference_site}.{reference_cohort}-{cohort}']
     sd_smash_corr_bet_coh_palette[f'{cohort}={r_param:.2f}'] = cohorts_metadata[cohort.split('.')[0]][cohort.split('.')[1]]['color']
-    src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==cohort],'signaling_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2B_surf_sc-{cohort}'),
-                            cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'signaling costs {cohort}',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
+    src.functions.plot_surf(src.functions.metric2mmp(all_avg_vox_vals[all_avg_vox_vals.cohort==cohort],'energetic_costs','roi_id'),os.path.join(results_dir,'figures',f'fig2B_surf_ecosts-{cohort}'),
+                            cmap=ListedColormap(extended_cm),show_colorbar=True,vlow=5,vhigh=95,fig_title=f'energetic costs {cohort}',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
     
-plt.figure(figsize=(6,3),dpi=fig_res_dpi)
+plt.figure(figsize=(7,3),dpi=fig_res_dpi)
 g = sns.kdeplot(data=sd_smash_corr_bet_coh_df,palette=sd_smash_corr_bet_coh_palette,legend=True)
 legend_handles = g.get_legend().legendHandles #get_legend_handles_labels()
 g.get_legend().remove()
-plt.legend(handles=legend_handles,title='correlation with TUM.exp1 '+r'$(p_{smash}$<0.0001)', loc='upper left',ncol=2,bbox_to_anchor=(-0.35,-0.3), labels=list(sd_smash_corr_bet_coh_df.columns))
+plt.legend(handles=legend_handles,title='correlation with TUM.exp1\n'+r'$(p_{smash}$<0.0001)', loc='upper left',ncol=1,bbox_to_anchor=(1,1.075), labels=list(sd_smash_corr_bet_coh_df.columns),frameon=False)#(-0.35,-0.3)
 plt.gca().set_xlim(-0.9,0.9)
 plt.gca().set_xlabel('SMASH correlation distributions')
 for ix,col in enumerate(list(sd_smash_corr_bet_coh_df.columns)):
@@ -483,9 +493,7 @@ for ix,col in enumerate(list(sd_smash_corr_bet_coh_df.columns)):
 #### 2C. Group statistics
 
 ```python
-## Average voxel values across subjects from all cohorts using a common group GM mask
-avg_vox_vals_with_gx_mask = all_avg_vox_vals_with_gx_mask.groupby('vox_id',as_index=False).median()
-
+##NOT: generate first avg_vox_vals_with_gx_mask df in Fig. 2A
 ## Group linear relationship color coded by energy density 
 r_vox_param_all,_=stats.pearsonr(avg_vox_vals_with_gx_mask.loc[avg_vox_vals_with_gx_mask[conn_metric].notnull(),x_var],
                                  avg_vox_vals_with_gx_mask.loc[avg_vox_vals_with_gx_mask[conn_metric].notnull(),y_var])
@@ -495,14 +503,14 @@ p_vox_np_all = p_vox_np_all if p_vox_np_all>0 else 0.00001
 plt.figure(dpi=fig_res_dpi)
 g = src.functions.plot_joint(avg_vox_vals_with_gx_mask[x_var],avg_vox_vals_with_gx_mask[y_var],s=0.1,robust=False,kdeplot=False,truncate=True,
                xlim0=False,y_label=ylabel,x_label=xlabel,return_plot_var=True,p_smash=p_vox_np_all)
-sns.scatterplot(x=x_var, y=y_var, hue='signaling_costs',data=avg_vox_vals_with_gx_mask,
+sns.scatterplot(x=x_var, y=y_var, hue='energetic_costs',data=avg_vox_vals_with_gx_mask,
                 linewidth=0,s=1.5,legend=False,palette=sel_cm,ax=g.ax_joint,
-                vmin=avg_vox_vals_with_gx_mask.signaling_costs.quantile(0.25),vmax=avg_vox_vals_with_gx_mask.signaling_costs.quantile(0.75))
+                vmin=avg_vox_vals_with_gx_mask.energetic_costs.quantile(0.25),vmax=avg_vox_vals_with_gx_mask.energetic_costs.quantile(0.75))
 
 ## Average ROI values across subjects from all cohorts for visualization purposes and comparisson with external data
-avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'signaling_costs','roi_id')
-src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_signalingcosts-avg'),cmap=ListedColormap(extended_cm),
-                        show_colorbar=True,vlow=5,vhigh=95,fig_title='average signaling costs across cohorts',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
+avg_roi_ed_vals= src.functions.metric2mmp(all_avg_roi_vals,'energetic_costs','roi_id')
+src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_ecosts-avg'),cmap=ListedColormap(extended_cm),
+                        show_colorbar=True,vlow=5,vhigh=95,fig_title='average energetic costs across cohorts',generate_surf=generate_surf,fig_res_dpi=fig_res_dpi)
 
 
 
@@ -512,8 +520,8 @@ all_sd_fn = os.path.join(root_dir,'all_47subj_ed-z_one-sample-t-test_vox_corrp_t
 
 avg_vox_vals_with_gx_mask['ostt_mask'] = input_data.NiftiMasker(mask_img=gx_gm_mask_fn).fit_transform(all_sd_fn).flatten()[avg_vox_vals_with_gx_mask.vox_id.to_numpy()]
 avg_vox_vals_with_gx_mask['ostt_signed'] = avg_vox_vals_with_gx_mask['ostt_mask'] 
-avg_vox_vals_with_gx_mask.loc[(avg_vox_vals_with_gx_mask['ostt_signed']>0) & (avg_vox_vals_with_gx_mask['signaling_costs']<0),'ostt_signed'] = -1
-avg_vox_vals_with_gx_mask.loc[(avg_vox_vals_with_gx_mask['ostt_signed']>0) & (avg_vox_vals_with_gx_mask['signaling_costs']>0),'ostt_signed'] = 1
+avg_vox_vals_with_gx_mask.loc[(avg_vox_vals_with_gx_mask['ostt_signed']>0) & (avg_vox_vals_with_gx_mask['energetic_costs']<0),'ostt_signed'] = -1
+avg_vox_vals_with_gx_mask.loc[(avg_vox_vals_with_gx_mask['ostt_signed']>0) & (avg_vox_vals_with_gx_mask['energetic_costs']>0),'ostt_signed'] = 1
 
 one_sample_ttest_roi_df = avg_vox_vals_with_gx_mask[['roi_id','ostt_signed']].groupby('roi_id',as_index=False).agg(lambda x: stats.mode(x)[0][0])
 one_sample_ttest_roi_df['ostt_mask'] = one_sample_ttest_roi_df['ostt_signed']
@@ -534,36 +542,30 @@ src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_s
 all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
 all_ind_roi_vals['nw'] = all_ind_roi_vals['roi_id'].map(atlas_dict['roi2network'])
 all_ind_roi_vals['nw_consistent_rois'] = all_ind_roi_vals['nw']
-all_ind_roi_vals['ed_sign_consistent_rois'] = 0
+all_ind_roi_vals['ecosts_sign_consistent_rois'] = 0
 for roi_id in all_ind_roi_vals.roi_id.unique():
-    if np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'signaling_costs'].to_numpy()>0)<=2:
-        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'ed_sign_consistent_rois'] = -1
-    elif np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'signaling_costs'].to_numpy()<0)<=2:
-        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'ed_sign_consistent_rois'] = 1
+    if np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energetic_costs'].to_numpy()>0)<=2:
+        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'ecosts_sign_consistent_rois'] = -1
+    elif np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energetic_costs'].to_numpy()<0)<=2:
+        all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'ecosts_sign_consistent_rois'] = 1
     else:
         all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'nw_consistent_rois'] = 'None'
-    #if ~((np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energy_density'].to_numpy()>0)<=2) | (np.sum(all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'energy_density'].to_numpy()<0)<=2)):
-    #    all_ind_roi_vals.loc[all_ind_roi_vals.roi_id==roi_id,'nw_consistent_rois'] = 'None'
 
 nw_consistent_rois_palette = atlas_dict['nw2color']
 nw_consistent_rois_palette['None'] = gray_c
 
-roi_ids_order = all_ind_roi_vals.groupby('roi_id',as_index=False).median().sort_values(by='signaling_costs',ignore_index=True).roi_id.to_list()
-### To test the plot with less ROIS: all_ind_roi_vals[all_ind_roi_vals.roi_id.isin(all_ind_roi_vals.roi_id.unique()[::10])]
+roi_ids_order = all_ind_roi_vals.groupby('roi_id',as_index=False).median().sort_values(by='energetic_costs',ignore_index=True).roi_id.to_list()
+### To test the plot with less ROIS: all_ind_roi_vals[all_ind_roi_vals.roi_id.isin(all_ind_roi_vals.roi_id.unique()[::50])]
 plt.figure(dpi=fig_res_dpi)
-g = sns.catplot(x='roi_id', y='signaling_costs', data=all_ind_roi_vals,height=3.5,aspect=2,hue='nw_consistent_rois',
+g = sns.catplot(x='roi_id', y='energetic_costs', data=all_ind_roi_vals,height=3.5,aspect=2,hue='nw_consistent_rois',
                 palette=nw_consistent_rois_palette,order=roi_ids_order,legend=False,s=3)
 rcparams_titlepad = plt.rcParams['axes.titlepad']
 plt.rcParams['axes.titlepad'] = -14
-g.set(xticklabels=[],xlabel='ROI',ylabel='signaling costs\n[umol/(min*100g)]')
-plt.gca().set_title('regions',fontsize=20)
+g.set(xticklabels=[])
+plt.gca().set_xlabel('cortical regions (dots, individual subjects)',fontsize=16)
+plt.gca().set_ylabel('energetic costs\n[umol/(min*100g)]',fontsize=16)
 plt.rcParams['axes.titlepad'] = rcparams_titlepad
-#plt.gca().set_xlabel('ROI')
-#plt.gca().set_ylabel('signaling costs\n[umol/(min*100g)]')
 plt.gca().axhline(0, 0, 1, color='k', lw=0.75,zorder=10)
-
-#plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.05),fontsize=14)
-
 
 plt.figure(dpi=fig_res_dpi)
 src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'figures',f'fig2D_surf_yeo7-nws'),
@@ -571,11 +573,11 @@ src.functions.plot_surf(yeo2mmp[1:181].astype(int),os.path.join(results_dir,'fig
 
 avg_consistent_roi_vals = all_ind_roi_vals[all_ind_roi_vals.nw_consistent_rois!='None']
 plt.figure(dpi=fig_res_dpi)
-avg_consistent_neg_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed_sign_consistent_rois<0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
+avg_consistent_neg_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ecosts_sign_consistent_rois<0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
 avg_consistent_neg_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
                              labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_neg_roi_vals.index.tolist()])
 plt.figure(dpi=fig_res_dpi)
-avg_consistent_pos_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ed_sign_consistent_rois>0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
+avg_consistent_pos_roi_vals = avg_consistent_roi_vals[avg_consistent_roi_vals.ecosts_sign_consistent_rois>0].groupby(['nw','roi_id'], as_index=False).median().groupby('nw').count().sort_values(by='roi_id', ascending=False)
 avg_consistent_pos_roi_vals.plot(kind='pie', y='roi_id',legend=False,shadow=False,autopct='%d%%',xlabel='',ylabel='',startangle=90,
                              labels=['','','','','',''],colors=[atlas_dict['nw2color'][cx] for cx in avg_consistent_pos_roi_vals.index.tolist()])
 
@@ -608,12 +610,13 @@ sns.regplot(x='log(volume)',y='log(total_glucose)',data=allometric_Karbowski_df,
 plt.gca().plot(np.log10(581),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(volume)'],
                np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100),#allometric_Karbowski_df.loc[allometric_Karbowski_df.species.isin(['human_2022']),'log(total_glucose)'],
               '.',color=plt.cm.tab20c(range(20))[4],markersize=12,label='Human (our data,only GM volume)')
-plt.gca().set(xlabel='log brain volume [ml]',ylabel='log glucose metabolism\n[umol/min]')
+plt.xlabel('log brain volume [ml]',fontsize=18)
+plt.ylabel('log glucose metabolism [umol/min]',fontsize=18)
 
 linreg_Karbowski = pg.linear_regression(allometric_Karbowski_df['log(volume)'],allometric_Karbowski_df['log(total_glucose)'],coef_only=False,remove_na=True,alpha=0.1,as_dataframe=False)
-allometric_model = r'$\bf{glucose\ metabolism\ \propto\ brain\ volume^{%0.2f}}$' % (linreg_Karbowski['coef'][1])
+allometric_model = 'Allometric law: '+r'$\it{glucose\ metabolism\ \propto\ brain\ volume^{%0.2f}}$' % (linreg_Karbowski['coef'][1])
 
-plt.gca().text(plt.gca().get_xlim()[0]-1.5,plt.gca().get_ylim()[0]-1.1, allometric_model, ha='left',va='top', color='k')
+#plt.gca().text(plt.gca().get_xlim()[0]-1.75,plt.gca().get_ylim()[0]-1.2, allometric_model, ha='left',va='top', color='k',fontsize=22)
 for index, row in allometric_Karbowski_df.iterrows():
     if row['species'] in (['baboon','goat','cat','Human (Karbowski 2007, whole brain)']):
         #plt.gca().annotate(row['species'], (row['log(volume)']-0.1, row['log(total_glucose)']),fontsize=10,ha = 'right')
@@ -636,10 +639,10 @@ sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid',
             palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:],plt.cm.tab20c(range(20))[8][np.newaxis,:]),axis=0))
 plt.gca().get_legend().remove()
 sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
-plt.gca().set_ylabel('\n'.join(ylabel.split(' ')))
+plt.gca().set_ylabel(ylabel,fontsize=20) #('\n'.join(ylabel.split(' ')),fontsize=20)
 plt.gca().set_xticklabels(['<0', '~0', '>0', 'primates'])
 plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=15)
-plt.gca().set_xlabel('signaling costs regions')
+plt.gca().set_xlabel('energetic costs regions',fontsize=20)
 plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=2,zorder=10)
 #roi_id are NaN for non-human primates data
 plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=2,zorder=10)
@@ -649,7 +652,7 @@ apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(
 sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
             palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
 plt.gca().get_legend().remove()
-plt.gca().set(xlabel='signaling costs regions', ylabel='CMRglc difference\nhumans-primate\n[umol/(min*100g)]', xticklabels=['<0', '~0', '>0'])
+plt.gca().set(xlabel='energetic costs regions', ylabel='CMRglc difference\nhumans-primates', xticklabels=['<0', '~0', '>0'])
 #plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
 
 apes_diff_sign = []
@@ -676,13 +679,13 @@ for _, h in enumerate(['lh', 'rh']):
     chimp2human_expansion = np.append(chimp2human_expansion, nib.load(os.path.join(root_dir,'external',f'Wei2019/{h}.32k.chimp2humanF.smoothed15.shape.gii')).darrays[0].data)
 chimp2human_expansion = surface_to_parcel(chimp2human_expansion,'glasser_360_conte69')[1:]
 plt.figure(dpi=fig_res_dpi)
-src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_allometric_ed-chimp2humanexpansion.png'),
-           l=5,u=95,n_mad='min',ylabel='Signaling costs\n[umol/(min*100g)]', xlabel='Brain expansion [a.u.]',p_uthr=1,plot=True,
-           cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=False,plot_surface=False,x_surr_corrs=cohorts_metadata['all']['smash_sd_{}-{}'.format(x_var,y_var)],
+src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_ecosts-chimp2humanexpansion.png'),
+           l=5,u=95,n_mad='min',ylabel='energetic costs\n[umol/(min*100g)]', xlabel='brain expansion [a.u.]',p_uthr=1,plot=True,
+           cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=False,plot_surface=False,x_surr_corrs=cohorts_metadata['all'][f'smash_expansion_ecosts-{x_var}-{y_var}'],
           )
 
-valid_ind_sc_exp = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
-pg.linear_regression(chimp2human_expansion[:180][valid_ind_sc_exp],avg_roi_ed_vals[valid_ind_sc_exp],coef_only=False,remove_na=True,alpha=0.1)
+valid_ind_ecosts_exp = src.functions.valid_data_index(chimp2human_expansion[:180],avg_roi_ed_vals,n_mad='min')
+pg.linear_regression(chimp2human_expansion[:180][valid_ind_ecosts_exp],avg_roi_ed_vals[valid_ind_ecosts_exp],coef_only=False,remove_na=True,alpha=0.1)
 
 ```
 
@@ -749,10 +752,10 @@ plt.gca().set(xlabel='staining\nintensity')
 
 ```python
 plt.figure(dpi=fig_res_dpi)
-src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_bb-skew_vs_ed.png'),
-                         ylabel='signaling costs [umol/(min*100g)]', xlabel='cell density skewness [a.u.]',
+src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_bb-skew_vs_ecosts.png'),
+                         ylabel='energetic costs [umol/(min*100g)]', xlabel='cell density skewness [a.u.]',
                          l=5,u=95,n_mad='min',p_uthr=1,plot=True,cmap=ListedColormap(extended_cm),print_text=False,plot_rnd=False,plot_surface=False,
-                         x_surr_corrs=cohorts_metadata['all']['smash_bb-skew_{}-{}'.format(x_var,y_var)])
+                         x_surr_corrs=cohorts_metadata['all'][f'smash_bb-skew_ecosts-{x_var}-{y_var}'])
 plt.gca().scatter(bbl_roi_skew[[lskew,hskew]],avg_roi_ed_vals[[lskew,hskew]],s=300, alpha=0.6,
                   c=np.concatenate((getattr(plt.cm,'magma')(range(256))[24][np.newaxis,:],getattr(plt.cm,'magma')(range(256))[231][np.newaxis,:]),axis=0))
 src.functions.plot_surf(np.array(bbl_roi_skew[:180]),os.path.join(results_dir,'figures',f'fig3C_surf_bb-skew'),cmap='magma',
@@ -787,7 +790,7 @@ plt.gca().axvline(corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.r>0)]
 
 hist_data = np.histogram_bin_edges(corr_ed_gexp.r.to_numpy(), bins=len(plt.gca().patches))
 sel_genes_colors = [plt.cm.Dark2(range(8))[3].flatten(),plt.cm.Dark2(range(8))[3].flatten(),plt.cm.tab20c([4]).flatten()]
-gene_ids_with_pet_available = np.array(['OPRM1','HTR4','CHRNA4']) # derived from figure 5E, buzt used here to don't duplicate the histogram there
+gene_ids_with_pet_available = np.array(['OPRM1','HTR4','CHRNA4']) # derived from figure 5E, but used here to don't duplicate the histogram there
 for cix,sel_gene in enumerate(gene_ids_with_pet_available):
     patch_index = (np.abs((hist_data-corr_ed_gexp[(corr_ed_gexp.p_fdr<=0.005) & (corr_ed_gexp.gene==sel_gene)].r.item()))).argmin()
     plt.gca().patches[patch_index].set_facecolor(sel_genes_colors[cix])
@@ -802,7 +805,7 @@ gene_exp_null_corr = ahba_gene_expression[corr_ed_gexp[(corr_ed_gexp.r>0) & (cor
 gene_exp_null_corr[np.isnan(gene_exp_null_corr)]=np.min(gene_exp_null_corr)-1 if np.min(gene_exp_null_corr)<0 else 0
 plt.figure(figsize=(0.5,3),dpi=fig_res_dpi)
 sns.heatmap(avg_roi_ed_vals[:,np.newaxis],cbar=False, xticklabels=False,yticklabels=False,cmap=sel_cm)
-src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_signalingcosts-avg'),cmap=ListedColormap(extended_cm),
+src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig2C_surf_ecosts-avg'),cmap=ListedColormap(extended_cm),
                         show_colorbar=False,vlow=5,vhigh=95,generate_surf=False,fig_res_dpi=fig_res_dpi)
 
 plt.figure(figsize=(0.5,3),dpi=fig_res_dpi)
@@ -835,7 +838,7 @@ for yix,ytickl in enumerate(cb.ax.get_yticklabels()):
     ytickl.set_fontsize(10+yix+1)
 cb.ax.text(-2, 0.05, go_cell_comps.loc[0,"Enrichment"],color=clrs_bar[0], transform=cb.ax.transAxes, va='top', ha='center')
 cb.ax.text(-2, 0.95, go_cell_comps.loc[go_cell_comps.shape[0]-1,"Enrichment"],color=clrs_bar[-1], transform=cb.ax.transAxes, va='bottom', ha='center')
-cb.ax.set_title( 'Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
+cb.ax.set_title( 'Gene ontology - cellular component',y=1.05,fontsize=20,fontdict={'horizontalalignment':'left'})
 #cb.ax.set_title( r'$\bf{Enrichment}$ Gene ontology - cellular component',fontdict={'horizontalalignment':'left'})
 
 cb.ax.set_ylabel('Enrichment', rotation=90)
@@ -862,7 +865,7 @@ plt.gca().set_yticklabels(go_mol_funcs.Description.to_list())
 [s.set_visible(False) for s in [plt.gca().spines['top'], plt.gca().spines['left'], plt.gca().spines['right']]]
 plt.gca().xaxis.grid(False)
 plt.gca().set_ylabel('GO term')
-plt.gca().set_title('Gene ontology - molecular function',fontsize=28)
+plt.gca().set_title('Gene ontology - molecular function',y=1.05,fontsize=22)
 orig_leg = plt.gca().get_legend_handles_labels()
 g._legend.remove()
 leg = plt.legend(orig_leg[0][8:],orig_leg[1][8:],bbox_to_anchor=(1,1.05), loc="upper left", frameon=False,title=orig_leg[1][7],title_fontsize=14)
@@ -875,7 +878,7 @@ axins = inset_axes(g.ax,
                    bbox_transform=g.ax.transAxes
                    )
 cbar = g.fig.colorbar(plt.cm.ScalarMappable(norm=clrs.Normalize(vmin=go_mol_funcs['Enrichment'].min(), vmax=go_mol_funcs['Enrichment'].max(), clip=False), cmap=ListedColormap(extended_cm[20:236])),cax=axins)
-axins.set_title(orig_leg[1][0],fontsize=14,loc='left')
+axins.set_title(orig_leg[1][0],fontsize=12,loc='left')
 ```
 
 #### 4B. Summary genetics
@@ -895,9 +898,9 @@ go_genes_pie_labels = go_genes_summary.loc[(go_genes_summary.gene_type=='neurotr
 go_genes_pie_labels[1] = go_genes_pie_labels[0] #only valid because both categories have the same value
 go_genes_pie_labels[0] = '' #others
 ## to make narrow the plot
-go_genes_pie_labels[1] = 'ligang-gated\nreceptor'
+go_genes_pie_labels[1] = 'ligang-\ngated\nreceptor'
 go_genes_pie_labels[2] = 'voltage gated\nion channels'
-go_genes_pie_labels[3] = 'G-protein\ncoupled receptor'
+go_genes_pie_labels[3] = 'G-protein\ncoupled\nreceptor'
 go_genes_pie_labels += go_genes_summary.loc[(go_genes_summary.gene_type=='cellular signaling'),['gene_type_subcategory','gene']].sort_values(by='gene').gene_type_subcategory.to_list()
 go_genes_pie_labels[4] = '' #G protein duplicated
 go_genes_pie_labels += ['','','','','','']
@@ -908,7 +911,7 @@ wd0,t0 = ax.pie(go_genes_pie_data.flatten(), radius=1,
                                        np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.8])[np.newaxis,:],np.array(list(plt.cm.Dark2(range(8))[3][:3])+[0.8])[np.newaxis,:],
                                        plt.cm.tab20c(range(20))[14:16],np.concatenate((plt.cm.tab20c(range(20))[15][:3],[0.5]))[np.newaxis,:],
                                        np.repeat(np.array([plt.cm.tab20c(range(20))[16]]),4,axis=0)),axis=0),
-                labels=go_genes_pie_labels,wedgeprops=dict(width=0.3, edgecolor='w'),labeldistance=1.2)
+                labels=go_genes_pie_labels,wedgeprops=dict(width=0.3, edgecolor='w'),labeldistance=1.15)
 
 wd,_,_ =ax.pie(go_genes_pie_data.sum(axis=1), radius=0.7, colors=plt.cm.tab20c(range(20))[[4,12,16]],
        wedgeprops=dict(width=0.3, edgecolor='w'),autopct='%d%%',textprops=dict(color="w"),pctdistance=0.75)
@@ -916,21 +919,22 @@ wd1,_ =ax.pie(np.array([np.sum(go_genes_pie_data[:2]),np.sum(go_genes_pie_data[-
        wedgeprops=dict(width=0.3, edgecolor='w'))
 ax.set(aspect="equal")
 ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular signaling','others'],
-          loc='lower left', ncol=2, bbox_to_anchor=(-0.6, -0.3))
+          loc='lower left', ncol=1, bbox_to_anchor=(-0.1, -0.6),frameon=False)
+#ax.legend([wd1[0]]+wd, ['signal transduction','cell-cell signaling','cellular signaling','others'],
+#          loc='lower left', ncol=2, bbox_to_anchor=(-0.6, -0.3))
 ```
 
 #### 4C. Chemoarchitecture mapping ####
 
 ```python
-ed_vox_df = pd.read_csv(os.path.join(root_dir,'individual_all-cohorts_vox_gx-mask_nsubj-{}_{}-{}_v1.0.csv.zip'.format(total_n_subj,conn_metric,dc_type)))
+ed_vox_df = pd.read_csv(os.path.join(root_dir,f'individual_all-cohorts_vox_gx-mask_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv.zip'))
 ed_vox_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
 ext_pet_df = pd.read_csv(os.path.join(root_dir,'external','Hansen2021','Hansen2021_19-pet-tracers_vox.csv'))
 ext_pet_df.drop(['Unnamed: 0'], axis = 1, inplace=True)
 ext_pet_labels = ext_pet_df.columns[1:-2].to_list()
 #PLS
-#if 'ed_ext_pet_vox_pls' not in locals():
-if 'signcosts_ext_pet_vox_pls' in cohorts_metadata['all'].keys():
-    ed_ext_pet_vox_pls = cohorts_metadata['all']['signcosts_ext_pet_vox_pls']
+if 'ecosts_ext_pet_vox_pls' in cohorts_metadata['all'].keys():
+    ed_ext_pet_vox_pls = cohorts_metadata['all']['ecosts_ext_pet_vox_pls']
 else:
     ed_ext_pet_vox_pls = pyls.behavioral_pls(stats.zscore(ed_vox_df[ed_vox_df.vox_id.isin(ext_pet_df.vox_id)].to_numpy()[:,1:], axis=0),ext_pet_df.to_numpy()[:,1:-2],n_perm=5000,n_boot=5000,n_proc=12)
 n_vox_sign_comp = (ed_ext_pet_vox_pls['permres']['pvals']<=0.05).sum()
@@ -983,6 +987,7 @@ for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(ext_pet_labels) if ex
     ext_pet_labels[ext_pet_idx] = r'$\bf{'+ext_pet_labels[ext_pet_idx]+'}$'
 
 axs.set_yticklabels(np.array(ext_pet_labels)[sorted_idx]) #(ext_pet_roi_maps.columns[1:].to_numpy()[sorted_idx])
+axs.set_xlabel("receptor loadings [a.u.]")
 
 for ext_pet_idx in [ipx for ipx,ext_pet_label in enumerate(np.array(ext_pet_labels)[sorted_idx]) if ext_pet_label in ['5HTT','DAT','NAT','VAChT']]:
     axs.get_yticklabels()[ext_pet_idx].set_color([0.5,0.5,0.5])
@@ -1002,14 +1007,14 @@ src.functions.plot_surf(src.functions.metric2mmp(pd.DataFrame({'roi_id':ext_pet_
 ```python
 selected_genes=['OPRM1','HTR4','CHRNA4']
 selected_tracers=['MU','5HT4','A4B2']
-sel_genexp_df = ahba_gene_expression.loc[:179,selected_genes].reset_index() #stats.zscore(
+sel_genexp_df = ahba_gene_expression.loc[:179,selected_genes].reset_index() 
 sel_genexp_df.rename(columns={'index': 'roi_id'}, inplace=True)
 sel_genexp_df['roi_id']+=1
 
 sel_genexp_df[sel_genexp_df.columns[sel_genexp_df.columns!='roi_id']] = sel_genexp_df[sel_genexp_df.columns[sel_genexp_df.columns!='roi_id']].apply(stats.zscore,nan_policy='omit')
 
-genexp_pet_df = ext_pet_roi_df[ext_pet_roi_df.roi_id<181].loc[:,selected_tracers+['roi_id']].merge(sel_genexp_df,on='roi_id',how='left').merge(pd.DataFrame({'signaling_costs':src.functions.metric2mmp(all_avg_roi_vals,'signaling_costs','roi_id'),'roi_id':np.arange(1,181)}),on='roi_id',how='left')
-genexp_pet_df = genexp_pet_df.melt(['roi_id','signaling_costs'], var_name='neurotransmitter',ignore_index=False)
+genexp_pet_df = ext_pet_roi_df[ext_pet_roi_df.roi_id<181].loc[:,selected_tracers+['roi_id']].merge(sel_genexp_df,on='roi_id',how='left').merge(pd.DataFrame({'energetic_costs':src.functions.metric2mmp(all_avg_roi_vals,'energetic_costs','roi_id'),'roi_id':np.arange(1,181)}),on='roi_id',how='left')
+genexp_pet_df = genexp_pet_df.melt(['roi_id','energetic_costs'], var_name='neurotransmitter',ignore_index=False)
 genexp_pet_df['variable'] = 'PET'
 genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'variable'] = 'transcriptomic'
 genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'neurotransmitter'] = genexp_pet_df.loc[genexp_pet_df.neurotransmitter.isin(selected_genes),'neurotransmitter'].map(
@@ -1018,9 +1023,9 @@ dict(zip(selected_genes, selected_tracers)))
 
 for nt in selected_tracers:
     pet_color = plt.cm.Dark2(range(8))[3].flatten() if nt!='A4B2' else plt.cm.tab20c([4]).flatten()
-    src.functions.multiple_joinplot(genexp_pet_df,'value','signaling_costs',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='transcriptomic')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
+    src.functions.multiple_joinplot(genexp_pet_df,'value','energetic_costs',[((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='transcriptomic')),((genexp_pet_df.neurotransmitter==nt) & (genexp_pet_df.variable=='PET'))],
                       [],['transcriptomic','PET'],[(0.2,0.2,0.2,1),pet_color],(0.6,0.6,0.6,0.6),s=20,xlim=(-2.5,2.5),ylim=(-8,8),
-                      xlabel=nt+' [Z-score]',ylabel='signaling costs\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.4,-0.7),plot_legend=True,mad_thr=3.5,print_ci=False)#,xlim=(-3,5),ylim=ylim,
+                      xlabel=nt+' [Z-score]',ylabel='energetic costs\n[umol/(min*100g)]',legend_bbox_to_anchor=(-0.4,-0.7),plot_legend=True,mad_thr=3.5,print_ci=False)
     
     
 ```
@@ -1028,8 +1033,7 @@ for nt in selected_tracers:
 #### 4D. Cognitive mapping ####
 
 ```python
-neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth-xscore0_pls-median_cohorts-all_vox_nsubj-30_{conn_metric}-{dc_type}_v1.0.csv'))
-neurosynth_masks_df = neurosynth_masks_df[neurosynth_masks_df.domain!='reading']
+neurosynth_masks_df = pd.read_csv(os.path.join(root_dir,f'gx_neurosynth_z-2.3-xscore0_pls-median_cohorts-all_vox_nsubj-30_{conn_metric}-{dc_type}.csv'))
 neurosynth_order = neurosynth_masks_df[neurosynth_masks_df.ext_pet_vox_pls_0!=0.0].groupby('domain', as_index=False).median().sort_values(by='ext_pet_vox_pls_0',ignore_index=True)
 neurosynth_order['sorted_domain'] = neurosynth_order.index.astype(str).str.zfill(2)+'-'+neurosynth_order.domain
 sorted_domain_map = dict(zip(neurosynth_order['domain'],neurosynth_order['sorted_domain']))
@@ -1041,7 +1045,7 @@ joypy.joyplot(
     column="ext_pet_vox_pls_0",#figsize=(5,8),
     colormap=plt.cm.RdBu_r,
     alpha=0.75,
-    figsize=(9,10),
+    figsize=(9,13),
     labels=list(neurosynth_masks_df.sort_values(by='sorted_domain',ignore_index=True)['domain'].unique()),
     #fade=True
 )#,overlap=3)#,x_range=[0,110])
