@@ -460,6 +460,7 @@ avg_vox_vals_with_gx_mask_reg = pg.linear_regression(avg_vox_vals_with_gx_mask[x
 plt.figure(dpi=fig_res_dpi)
 src.functions.plot_joint(avg_vox_vals_with_gx_mask_reg['pred'],avg_vox_vals_with_gx_mask_reg['residuals'],s=10*s,robust=False,
                          kdeplot=False,truncate=True,xlim0=False,x_label='fitted CMRglc',y_label='residual CMRglc')
+pg.linear_regression(avg_vox_vals_with_gx_mask_reg['pred'],avg_vox_vals_with_gx_mask_reg['residuals'],coef_only=False,remove_na=True,alpha=0.1)
 
 ```
 

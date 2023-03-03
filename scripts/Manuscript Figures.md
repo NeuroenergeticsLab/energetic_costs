@@ -460,6 +460,7 @@ avg_vox_vals_with_gx_mask_reg = pg.linear_regression(avg_vox_vals_with_gx_mask[x
 plt.figure(dpi=fig_res_dpi)
 src.functions.plot_joint(avg_vox_vals_with_gx_mask_reg['pred'],avg_vox_vals_with_gx_mask_reg['residuals'],s=10*s,robust=False,
                          kdeplot=False,truncate=True,xlim0=False,x_label='fitted CMRglc',y_label='residual CMRglc')
+pg.linear_regression(avg_vox_vals_with_gx_mask_reg['pred'],avg_vox_vals_with_gx_mask_reg['residuals'],coef_only=False,remove_na=True,alpha=0.1)
 
 ```
 
@@ -733,18 +734,33 @@ bbl_roi_skew = np.array(bbl_roi_skew)
 lskew = np.where((bbl_roi_skew[:180]>-2.25) & (bbl_roi_skew[:180]<-2.2) & (avg_roi_ed_vals>5))[0][0]
 hskew=np.where((bbl_roi_skew[:180]<-1.38) & (bbl_roi_skew[:180]>-1.4) & (avg_roi_ed_vals<0) & (avg_roi_ed_vals>-0.3))[0][0]
 
-plt.figure(figsize=(3,3),dpi=fig_res_dpi)
+plt.figure(figsize=(3,2.5),dpi=fig_res_dpi)
 plt.plot(bbl_roi[:,lskew],np.arange(50,0,-1),color=getattr(plt.cm,'magma')(range(256))[24],label='left')
 plt.plot(bbl_roi[:,hskew],np.arange(50,0,-1),color=getattr(plt.cm,'magma')(range(256))[196],label='right') #231
-plt.gca().set(ylim=(0,50),yticks=(0,50),yticklabels=['wm','pial'],xlabel='staining\nintensity',ylabel='cortical depth')
+plt.gca().set(ylim=(0,50),yticks=(0,50),yticklabels=['wm','pial'],xlabel='staining intensity',ylabel='cortical depth')
 plt.gca().xaxis.get_major_formatter().set_powerlimits((0, 1))
+plt.gca().get_xaxis().get_offset_text().set_visible(False)
+ax_max = max(plt.gca().get_xticks())
+exponent_axis = np.floor(np.log10(abs(ax_max))).astype(int)
+plt.gca().annotate(r'$\times$10$^{%i}$'%(exponent_axis),xy=(.89, .01), xycoords='axes fraction')
 
-plt.figure(figsize=(3,3),dpi=fig_res_dpi)
+plt.figure(figsize=(3,2.5),dpi=fig_res_dpi)
 sns.kdeplot(bbl_roi[:,lskew],color=getattr(plt.cm,'magma')(range(256))[24],label='left')
 sns.kdeplot(bbl_roi[:,hskew],color=getattr(plt.cm,'magma')(range(256))[196],label='right')#231
 plt.gca().yaxis.get_major_formatter().set_powerlimits((0, 1))
 plt.gca().xaxis.get_major_formatter().set_powerlimits((0, 1))
-plt.gca().set(xlabel='staining\nintensity')
+plt.gca().set(xlabel='staining intensity')
+plt.gca().get_xaxis().get_offset_text().set_visible(False)
+ax_max = max(plt.gca().get_xticks())
+exponent_axis = np.floor(np.log10(abs(ax_max))).astype(int)
+plt.gca().annotate(r'$\times$10$^{%i}$'%(exponent_axis),
+             xy=(.89, .01), xycoords='axes fraction')
+
+plt.gca().get_yaxis().get_offset_text().set_visible(False)
+ay_max = max(plt.gca().get_yticks())
+exponent_ayis = np.floor(np.log10(abs(ay_max))).astype(int)
+plt.gca().annotate(r'$\times$10$^{%i}$'%(exponent_ayis),
+             xy=(.01, .85), xycoords='axes fraction')
 
 ```
 
