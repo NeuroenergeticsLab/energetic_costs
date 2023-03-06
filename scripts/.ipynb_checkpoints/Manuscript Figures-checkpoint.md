@@ -14,7 +14,7 @@ jupyter:
 ---
 
 #### Installation of libraries not available as packages (Run only the first time you open this notebook)
-It will restart the kernel once you run the cell below to be able to use the library src, just click Ok on the pop-up message about restarting the Kernel and continue running the next cell.
+It will restart the kernel once you run the cell below to be able to use the library src, just click Ok on the pop-up message about restarting the Kernel and continue running the next cell. Ignore the "Dead kernel" tag on the menu bar. 
 
 ```python
 {
