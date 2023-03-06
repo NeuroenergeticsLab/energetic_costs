@@ -1,4 +1,4 @@
-# Signaling costs
+# The energetic costs of the human connectome
 
 This is the code and main data associated with the article of the human energetic costs of signaling (in submission process), by Gabriel Castrillon, Valentin Riedl et al 2023. In:
 
