@@ -14,9 +14,14 @@ jupyter:
 ---
 
 #### Installation of libraries not available as packages (Run only the first time you open this notebook)
-It will restart the kernel once you run the cell below  to be able to use the library src
+It will restart the kernel once you run the cell below to be able to use the library src, just click Ok on the pop-up message about restarting the Kernel and continue running the next cell.
 
 ```python
+{
+    "tags": [
+        "remove-output"
+    ]
+}
 import sys,os
 !git clone https://github.com/MICA-MNI/ENIGMA.git ._ENIGMA;cd ._ENIGMA;{sys.prefix}/bin/python setup.py install;rm -rf ../._ENIGMA
 !git clone https://github.com/rmarkello/pyls.git ._pyls;cd ._pyls;{sys.prefix}/bin/python setup.py install;rm -rf ../._pyls
