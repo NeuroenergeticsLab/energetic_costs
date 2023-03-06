@@ -259,6 +259,8 @@ for site in sel_sites:
 
 ***Statistical differences in the variance explained by models adding the dynamic DC and SC***
 
+NOTE: one needs to configure R locally. If you are running this notebook in Binder, jump to [1C. Individual subject analysis](#1C.-Individual-subject-analysis). 
+
 ```python
 # Run this cell to be able to run R in the next cell, added for debugging (it can be ignored), the cell to be RUN is after the next one
 %reload_ext rpy2.ipython
@@ -555,6 +557,8 @@ src.functions.plot_surf(src.functions.metric2mmp(one_sample_ttest_roi_df,'ostt_s
 ```
 
 #### 2D. Subject and network distribution
+
+NOTE: this cells needs longer time to run due to the strip-plot. You can skip it without having dependency problems with other cells below.
 
 ```python
 all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
