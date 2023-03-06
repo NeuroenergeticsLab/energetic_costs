@@ -45,3 +45,4 @@ Thumbs.db
 #*.ipynb
 *.nii
 *.nii.gz
+*.pickle

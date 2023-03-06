@@ -14,14 +14,15 @@ jupyter:
 ---
 
 #### Installation of libraries not available as packages (Run only the first time you open this notebook)
+It will restart the kernel once you run the cell below  to be able to use the library src
 
 ```python
-import sys
+import sys,os
 !git clone https://github.com/MICA-MNI/ENIGMA.git ._ENIGMA;cd ._ENIGMA;{sys.prefix}/bin/python setup.py install;rm -rf ../._ENIGMA
 !git clone https://github.com/rmarkello/pyls.git ._pyls;cd ._pyls;{sys.prefix}/bin/python setup.py install;rm -rf ../._pyls
 !{sys.prefix}/bin/pip install -e ../
 #Restart the kernel after installing
-
+os._exit(00)
 ```
 
 #### Libraries loading
@@ -141,12 +142,19 @@ total_n_subj = 47
 all_avg_vox_vals = pd.read_csv(os.path.join(root_dir,f'gx_all-cohorts_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv'))
 all_avg_roi_vals = pd.read_csv(os.path.join(root_dir,f'gx_all-cohorts_roi_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv'))
 all_ind_vox_vals = pd.read_csv(os.path.join(root_dir,f'individual_all-cohorts_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv.zip'))
-with open(os.path.join(root_dir,f'gx_all-cohorts_data_nsubj-{total_n_subj}_{conn_metric}-{dc_type}_NO_delete_v01.pickle'), 'rb') as f:
-    cohorts_metadata = pickle.load(f)
 all_avg_vox_vals_with_gx_mask = pd.read_csv(os.path.join(root_dir,f'gx_all-cohorts_vox_gx-mask_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv.zip'))
 all_ind_roi_vals = all_ind_vox_vals.groupby(['cohort','sid','roi_id'], as_index=False).median()
 
-tum_participants_info = pd.read_csv(os.path.join(root_dir,'._participants.tsv'),sep='\t')
+cohorts_metadata_fn = os.path.join(root_dir,f'gx_all-cohorts_data_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.pickle')
+if not os.path.exists(cohorts_metadata_fn):
+    !wget https://openneuro.org/crn/datasets/ds004513/files/derivatives:energetic-costs:gx_all-cohorts_data_nsubj-47_degree-weighted.pickle -O {cohorts_metadata_fn}
+with open(cohorts_metadata_fn, 'rb') as f:
+    cohorts_metadata = pickle.load(f)    
+
+tum_participants_fn = os.path.join(root_dir,'._participants.tsv')
+if not os.path.exists(tum_participants_fn):
+    !wget https://openneuro.org/crn/datasets/ds004513/files/participants.tsv -O {tum_participants_fn}
+tum_participants_info = pd.read_csv(tum_participants_fn,sep='\t')
 vie_participants_info = pd.read_csv(os.path.join(root_dir,'external','Sundar2018','VIE_participants.tsv'),sep='\t')
 age_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.age)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.age))}
 sex_participants_mapping = {**dict(zip(tum_participants_info.participant_id.str.split('-').str[1],tum_participants_info.sex)),**dict(zip(vie_participants_info.participant_id.str.split('-').str[1],vie_participants_info.sex))}
@@ -515,9 +523,13 @@ src.functions.plot_surf(avg_roi_ed_vals,os.path.join(results_dir,'figures',f'fig
 
 
 
-## One sample t-test statistics across subjects
+## Voxelwise one sample t-test statistics across subjects
 gx_gm_mask_fn = os.path.join(root_dir,'gx_between-cohort_gm-mask_25perc_mni-3mm.nii.gz')
+if not os.path.exists(gx_gm_mask_fn):
+    !wget https://openneuro.org/crn/datasets/ds004513/files/derivatives:energetic-costs:gx_between-cohort_gm-mask_25perc_mni-3mm.nii.gz -O {gx_gm_mask_fn}
 all_sd_fn = os.path.join(root_dir,'all_47subj_ed-z_one-sample-t-test_vox_corrp_tstat1_lt_0.01_mni-3mm.nii.gz')
+if not os.path.exists(all_sd_fn):
+    !wget https://openneuro.org/crn/datasets/ds004513/files/derivatives:energetic-costs:all_47subj_ed-z_one-sample-t-test_vox_corrp_tstat1_lt_0.01_mni-3mm.nii.gz -O {all_sd_fn}
 
 avg_vox_vals_with_gx_mask['ostt_mask'] = input_data.NiftiMasker(mask_img=gx_gm_mask_fn).fit_transform(all_sd_fn).flatten()[avg_vox_vals_with_gx_mask.vox_id.to_numpy()]
 avg_vox_vals_with_gx_mask['ostt_signed'] = avg_vox_vals_with_gx_mask['ostt_mask'] 
@@ -629,46 +641,6 @@ for index, row in allometric_Karbowski_df.iterrows():
         plt.gca().annotate(row['species'], (row['log(volume)']+0.05, row['log(total_glucose)']-0.05),fontsize=18)
 plt.gca().annotate('Human\n(our data,\nGM only)', (np.log10(581)+0.05, (np.log10(581*all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean()/100))-0.6),fontsize=18)
 pg.linear_regression(allometric_Karbowski_df['log(volume)'],allometric_Karbowski_df['log(total_glucose)'],coef_only=False,remove_na=True,alpha=0.1)
-
-```
-
-***Comparative neuroenergetics***
-
-```python
-plt.figure(figsize=(2.5,4),dpi=fig_res_dpi)
-sns.barplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),hue="ostt_signed",dodge=False,
-            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:],plt.cm.tab20c(range(20))[8][np.newaxis,:]),axis=0))
-plt.gca().get_legend().remove()
-sns.stripplot(x="ostt_signed", y=pet_metric, data=all_ind_vox_vals.groupby(['sid','ostt_signed'],as_index=False).median(),color='k')
-plt.gca().set_ylabel(ylabel,fontsize=20) #('\n'.join(ylabel.split(' ')),fontsize=20)
-plt.gca().set_xticklabels(['<0', '~0', '>0', 'primates'])
-plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=15)
-plt.gca().set_xlabel('energetic costs regions',fontsize=20)
-plt.gca().axhline(all_ind_vox_vals.loc[all_ind_vox_vals.ostt_signed==2,y_var].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[8], lw=2,zorder=10)
-#roi_id are NaN for non-human primates data
-plt.gca().axhline(all_ind_vox_vals.groupby(['roi_id'],as_index=False).median()[pet_metric].mean(), 0, 1, linestyle='dashed', color=plt.cm.tab20c(range(20))[4], lw=2,zorder=10)
-
-plt.figure(figsize=(2.5,4),dpi=fig_res_dpi)
-apes_diff_sign_df = all_ind_vox_vals[(all_ind_vox_vals.ostt_signed!=2)].groupby(['sid','ostt_signed'],as_index=False).median()
-sns.barplot(x="ostt_signed", y=pet_metric+'_diff_apes', data=apes_diff_sign_df,hue="ostt_signed",dodge=False,
-            palette=np.concatenate((getattr(plt.cm,sel_cm)(range(256))[24][np.newaxis,:],np.array(gray_c)[np.newaxis,:],getattr(plt.cm,sel_cm)(range(256))[231][np.newaxis,:]),axis=0))
-plt.gca().get_legend().remove()
-plt.gca().set(xlabel='energetic costs regions', ylabel='CMRglc difference\nhumans-primates', xticklabels=['<0', '~0', '>0'])
-#plt.gca().set_xticklabels(plt.gca().get_xticklabels(),rotation=45)
-
-apes_diff_sign = []
-for ix in range(-1,2):
-    apes_diff_ttest = stats.ttest_1samp(apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].cmrglc_diff_apes.to_numpy(), 0)
-    apes_diff_sign += [apes_diff_ttest[1]]
-    if apes_diff_ttest[1]<0.055:
-        print(f'One sample t-test region-{ix} is significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(["roi_id"],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
-    else:
-        print(f'One sample t-test region-{ix} is NOT significantly different from 0 (mean={all_ind_vox_vals[all_ind_vox_vals.ostt_signed==ix].groupby(["roi_id"],as_index=False).median()[pet_metric].mean():.2f}, t({apes_diff_sign_df[apes_diff_sign_df.ostt_signed==ix].shape[0]-1}) = {apes_diff_ttest[0]:.2f}, p = {apes_diff_ttest[1]})')
-apes_diff_sign = pg.multicomp(np.array(apes_diff_sign),method='bonf')[1]
-for ix in range(len(apes_diff_sign_df.ostt_signed.unique())):
-    if apes_diff_sign[ix]<0.055:
-        sign_text = '***' if apes_diff_sign[ix]<0.0001 else '*'
-        plt.gca().text(ix, plt.gca().get_ylim()[1]-1.25, sign_text, ha='center', va='bottom', color='r', size=28)
 
 ```
 
