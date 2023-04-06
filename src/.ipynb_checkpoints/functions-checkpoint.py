@@ -19,6 +19,16 @@ from wbplot import constants
 from IPython.display import Image
 import matplotlib.image as mpimg
 
+def nii2df(filenames_dict={'mask':'','other_fields':{}}):
+    masker = input_data.NiftiMasker(mask_img=filenames_dict['mask'])
+    data_dict={}
+    for k,v in filenames_dict['other_fields'].items():
+        data_dict[k] = v
+    maps_fn = {k:v for k,v in filenames_dict.items() if k not in ['mask','other_fields']}
+    for k,fn in maps_fn.items():
+        data_dict[k] = masker.fit_transform(fn).flatten()
+    return pd.DataFrame(data_dict)
+
 def remove_ext(nii_file):
     """
     Remove the file extension from the file name, like the .nii.gz from compressed nifti files
