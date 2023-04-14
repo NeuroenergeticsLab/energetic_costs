@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.14.0
+      jupytext_version: 1.13.7
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -64,7 +64,6 @@ from brainsmash.mapgen.base import Base
 from brainsmash.mapgen.eval import base_fit
 from brainsmash.mapgen.stats import pearsonr, pairwise_r, nonparp
 
-from ptitprince import half_violinplot
 
 plt.rcParams['font.sans-serif'] = ['Open Sans']+plt.rcParams['font.sans-serif']
 sns.set_context("notebook", font_scale=2.1)
