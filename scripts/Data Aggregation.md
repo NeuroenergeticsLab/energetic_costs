@@ -57,7 +57,8 @@ import src.functions
 
 ```python
 root_dir = '../data'
-bids_dir = '../../../fdgquant2016/4eliana2convert2bids/bids2upload/derivatives/energetic-costs'
+# BIDS directory downloaded from https://openneuro.org/datasets/ds004513
+bids_dir = 'bidsdir/derivatives/energetic-costs'
 
 conn_metric = 'degree'
 dc_type = 'weighted'
