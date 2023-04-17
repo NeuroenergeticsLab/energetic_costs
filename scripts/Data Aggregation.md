@@ -58,7 +58,8 @@ import src.functions
 ```python
 root_dir = '../data'
 # BIDS directory downloaded from https://openneuro.org/datasets/ds004513
-bids_dir = 'bidsdir/derivatives/energetic-costs'
+bids_dir = '../../../fdgquant2016/4eliana2convert2bids/bids2upload/derivatives/energetic-costs'
+#change it for bids_dir = 'bidsdir/derivatives/energetic-costs'
 
 conn_metric = 'degree'
 dc_type = 'weighted'
@@ -166,7 +167,27 @@ for df_label in df_labels.keys():
                 df[conn_metric+dc_z] = stats.zscore(df[conn_metric])
                 df['gm_vbm'+dc_z] = stats.zscore(df['gm_vbm'])
                 all_df = pd.concat([all_df,df], ignore_index=True)
-                #df_labels[df_label] = pd.concat([df_labels[df_label],df], ignore_index=True)
+                if df_label=='all_ind_vox_vals':
+                    if sid not in cohorts_metadata[site][coh]['individual_smash'].keys():
+                        cohorts_metadata[site][coh]['individual_smash'][sid] = {}
+                    if f'smash_{x_var}-{y_var}' not in cohorts_metadata[site][coh]['individual_smash'][sid].keys():
+                        cohorts_metadata[selected_site][coh]['individual_smash'][sid][f'smash_{x_var}-{y_var}'] = src.functions.smash_comp(src.functions.metric2mmp(df,x_var,'roi_id'),metric2mmp(df,y_var,'roi_id'),lh_dist_full,
+                                                                                                                                           y_nii_fn=cmrglc_fn,l=5,u=95,n_mad='min',p_uthr=0.05,plot=False)
+            if df_label=='all_avg_vox_vals':
+                if f'smash_{x_var}-{y_var}' not in cohorts_metadata[site][coh].keys():
+                    cohorts_metadata[site][coh][f'smash_{x_var}-{y_var}'] = src.functions.smash_comp(src.functions.metric2mmp(all_df[all_df.cohort==f'{site}.{coh}'].groupby(['nw','vox_id'], as_index=False).median(),x_var,'roi_id'),
+                                                                                                     src.functions.metric2mmp(all_df[all_df.cohort==f'{site}.{coh}'].groupby(['nw','vox_id'], as_index=False).median(),y_var,'roi_id'),
+                                                                                                     lh_dist_full,l=5,u=95,n_mad='min',p_uthr=0.05,plot=False,y_nii_fn=os.path.join(bids_dir,f'{site}.{coh}_{x_var}-{y_var}.nii.gz'))
+            elif ((df_label=='all_avg_vox_vals_with_gx_mask') & (f'{site}.{coh}'!='TUM.exp1')):
+                ## similarity between the distribution of energetic costs of signaling in TUM.exp1 and each of the other cohorts
+                if 'all' not in cohorts_metadata.keys():
+                    cohorts_metadata['all'] = {}
+                if f'smash_ecosts_TUM.exp1-{site}.{coh}' not in cohorts_metadata['all'].keys():
+                    cohorts_metadata['all'][f'smash_ecosts_TUM.exp1-{site}.{coh}'] = src.functions.smash_comp(src.functions.metric2mmp(all_df[all_df.cohort=='TUM.exp1'].groupby(['nw','vox_id'], as_index=False).median(),'energetic_costs','roi_id'),
+                                                                                                              src.functions.metric2mmp(all_df[all_df.cohort==f'{site}.{coh}'].groupby(['nw','vox_id'], as_index=False).median(),'energetic_costs','roi_id'),
+                                                                                                              lh_dist_full,l=5,u=95,n_mad='min',p_uthr=0.05,plot=False,y_nii_fn=os.path.join(bids_dir,f'smash_ecosts_TUM.exp1-{site}.{coh}.nii.gz'))
+                    
+
     if df_label=='all_ind_vox_vals':
         all_df.drop('vox_id', axis=1, inplace=True)
         df_labels[df_label] = all_df.copy()
@@ -178,13 +199,14 @@ for df_label in df_labels.keys():
             all_avg_roi_vals = df_labels[df_label].groupby(['cohort','nw','roi_id'], as_index=False).median()
             all_avg_roi_vals['roi_id'] = all_avg_roi_vals['roi_id'].astype(int)
             all_avg_roi_vals.drop('vox_id', axis=1, inplace=True)
+        elif df_label=='all_avg_vox_vals_with_gx_mask':
+            if f'smash_{x_var}-{y_var}' not in cohorts_metadata['all'].keys():
+                cohorts_metadata['all'][f'smash_{x_var}-{y_var}'] = src.functions.smash_comp(src.functions.metric2mmp(df_labels[df_label].groupby(['vox_id'], as_index=False).median(),x_var,'roi_id'),
+                                                                                             src.functions.metric2mmp(df_labels[df_label].groupby(['vox_id'], as_index=False).median(),y_var,'roi_id'),
+                                                                                             lh_dist_full,l=5,u=95,n_mad='min',p_uthr=0.05,plot=False,y_nii_fn=os.path.join(bids_dir,f'avg_all_{x_var}-{y_var}.nii.gz'))
+            
+            
         
-#if sid not in cohorts_metadata[site][coh]['individual_smash'].keys():
-#    cohorts_metadata[site][coh]['individual_smash'][sid] = {}
-#if f'smash_{x_var}-{y_var}' not in cohorts_metadata[site][coh]['individual_smash'][sid].keys():
-#    cohorts_metadata[selected_site][coh1]['individual_smash'][sid][f'smash_{x_var}-{y_var}'] = src.functions.smash_comp(metric2mmp(mm_vox_df,x_var,'roi_id'),metric2mmp(mm_vox_df,y_var,'roi_id'),lh_dist_full,
-#                                                                                                                        y_nii_fn=remove_ext(pet_mni_fn) if y_var==pet_metric else remove_ext(fmri_mni_fn),
-#                                                                                                                        l=5,u=95,n_mad='min',p_uthr=1,plot=False)
 
 ```
 
@@ -195,5 +217,7 @@ df_labels['all_ind_vox_vals'].to_csv(os.path.join(root_dir,f'individual_all-coho
 df_labels['all_avg_vox_vals'].to_csv(os.path.join(root_dir,f'gx_all-cohorts_vox_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv'))
 all_avg_roi_vals.to_csv(os.path.join(root_dir,f'gx_all-cohorts_roi_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv'))
 df_labels['all_avg_vox_vals_with_gx_mask'].to_csv(os.path.join(root_dir,f'gx_all-cohorts_vox_gx-mask_nsubj-{total_n_subj}_{conn_metric}-{dc_type}.csv.zip'))
+with open(cohorts_metadata_fn, 'wb') as f:
+    pickle.dump(cohorts_metadata, f, pickle.HIGHEST_PROTOCOL)
 
 ```

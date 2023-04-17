@@ -6,7 +6,7 @@ jupyter:
       extension: .md
       format_name: markdown
       format_version: '1.3'
-      jupytext_version: 1.14.0
+      jupytext_version: 1.13.7
   kernelspec:
     display_name: Python 3 (ipykernel)
     language: python
@@ -64,7 +64,6 @@ from brainsmash.mapgen.base import Base
 from brainsmash.mapgen.eval import base_fit
 from brainsmash.mapgen.stats import pearsonr, pairwise_r, nonparp
 
-from ptitprince import half_violinplot
 
 plt.rcParams['font.sans-serif'] = ['Open Sans']+plt.rcParams['font.sans-serif']
 sns.set_context("notebook", font_scale=2.1)
@@ -661,6 +660,10 @@ for _, h in enumerate(['lh', 'rh']):
     chimp2human_expansion = np.append(chimp2human_expansion, nib.load(os.path.join(root_dir,'external',f'Wei2019/{h}.32k.chimp2humanF.smoothed15.shape.gii')).darrays[0].data)
 chimp2human_expansion = surface_to_parcel(chimp2human_expansion,'glasser_360_conte69')[1:]
 plt.figure(dpi=fig_res_dpi)
+if f'smash_expansion_ecosts-{x_var}-{y_var}' not in cohorts_metadata['all'].keys():
+    src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,lh_dist_full,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_ecosts-chimp2humanexpansion.png'),
+                             l=5,u=95,n_mad='min',p_uthr=1,plot=False)
+    
 src.functions.smash_comp(chimp2human_expansion[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_ecosts-chimp2humanexpansion.png'),
            l=5,u=95,n_mad='min',ylabel='energetic costs\n[umol/(min*100g)]', xlabel='brain expansion [a.u.]',p_uthr=1,plot=True,
            cmap=ListedColormap(extended_cm),print_text=True,plot_rnd=False,plot_surface=False,x_surr_corrs=cohorts_metadata['all'][f'smash_expansion_ecosts-{x_var}-{y_var}'],
@@ -749,6 +752,10 @@ plt.gca().annotate(r'$\times$10$^{%i}$'%(exponent_ayis),
 
 ```python
 plt.figure(dpi=fig_res_dpi)
+if f'smash_bb-skew_ecosts-{x_var}-{y_var}' not in cohorts_metadata['all'].keys():
+    cohorts_metadata['all'][f'smash_bb-skew_ecosts-{x_var}-{y_var}'] = src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,lh_dist_full,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_bb-skew_vs_ecosts.png'),
+                                                                                                l=5,u=95,n_mad='min',p_uthr=1,plot=False)
+
 src.functions.smash_comp(bbl_roi_skew[:180],avg_roi_ed_vals,None,y_nii_fn=os.path.join(results_dir,'figures',f'fig3C_bb-skew_vs_ecosts.png'),
                          ylabel='energetic costs [umol/(min*100g)]', xlabel='cell density skewness [a.u.]',
                          l=5,u=95,n_mad='min',p_uthr=1,plot=True,cmap=ListedColormap(extended_cm),print_text=False,plot_rnd=False,plot_surface=False,
