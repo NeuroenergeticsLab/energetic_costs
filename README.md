@@ -11,3 +11,4 @@ The manuscript figures are already rendered in the notebook [scripts/Manuscript 
 ```console
 $ git clone https://github.com/NeuroenergeticsLab/energetic_costs
 ```
+All raw and processed data from the TUM-site are available in the online repository of [Openneuro](https://openneuro.org/datasets/ds004513).
