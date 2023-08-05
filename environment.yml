@@ -28,7 +28,7 @@ dependencies:
     - brainspace
     - Pillow
     - netneurotools
-    - wordcloud
+#    - wordcloud
     - joypy==0.2.4
-    - rpy2==3.5.4
+#    - rpy2==3.5.4
     - vtk==9.1.0
