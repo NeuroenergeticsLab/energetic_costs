@@ -38,6 +38,7 @@ Thumbs.db
 *.egg-info*
 *pycache*
 *.ipynb_checkpoints*
+*checkpoint.*
 *delete*
 
 # Others #

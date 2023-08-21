@@ -8,9 +8,9 @@ jupyter:
       format_version: '1.3'
       jupytext_version: 1.13.7
   kernelspec:
-    display_name: Python 3 (ipykernel)
+    display_name: energy_density_env (ed)
     language: python
-    name: python3
+    name: ed
 ---
 
 #### Installation of libraries not available as packages (Run only the first time you open this notebook)

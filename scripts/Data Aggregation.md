@@ -73,10 +73,6 @@ x_var = conn_metric+dc_z
 xlabel='dFC [Z-score]'
 ylabel='CMRglc [umol/(min*100g)]'
 
-gm_thr = 25
-fc_res_label = 'cpac_v1.4.0'
-dti_res_label = 'mrtrix3_v0.4.2'
-pipeline = '_compcor_ncomponents_5_selector_pc10.linear1.wm0.global0.motion1.quadratic1.gm0.compcor1.csf1'
 lh_dist_full = np.loadtxt(os.path.join(root_dir,'external','brainSMASH','LeftParcelGeodesicDistmat.txt'))
 
 
